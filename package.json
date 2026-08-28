@@ -1,0 +1,48 @@
+{
+  "name": "specsync",
+  "version": "0.1.0",
+  "description": "Spec-to-code drift detection using parallel LLM subagents",
+  "type": "module",
+  "main": "dist/cli.js",
+  "bin": {
+    "specsync": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "start": "node --experimental-vm-modules dist/cli.js",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@huggingface/transformers": "^4.2.0",
+    "commander": "^12.1.0",
+    "cosine-similarity": "^1.0.0",
+    "glob": "^11.0.0",
+    "mammoth": "^1.8.0",
+    "marked": "^14.1.3",
+    "openai": "^4.77.0",
+    "p-limit": "^6.1.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pdf-parse": "^1.1.4",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "allowScripts": {
+    "onnxruntime-node@1.24.3": true,
+    "protobufjs@7.6.6": true,
+    "sharp@0.34.5": true
+  }
+}
