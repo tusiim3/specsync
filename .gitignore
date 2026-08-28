@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.env
+.env.*
+*.env
+
+# Demo target repo — cloned separately, not committed
+demo/target-repo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Cache (transformers model weights)
+.cache/
+*.cache
+
+# Drift outputs (generated, not source)
+drift-report.md
+drift-map.json
