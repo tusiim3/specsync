@@ -12,7 +12,7 @@ import type {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type _RequirementWithVector = Requirement & { vector?: number[] };
 
-const TOP_K = 5;
+const TOP_K = 8;
 const CONCURRENCY_LIMIT = 8;
 const CONFIDENCE_THRESHOLD = 0.7;
 

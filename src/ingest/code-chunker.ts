@@ -16,7 +16,7 @@ const EXCLUDE_PATTERNS = [
 ];
 
 const DECLARATION_RE =
-  /^(?:export\s+)?(?:async\s+)?(?:function\s+\w|class\s+\w|const\s+\w+\s*=\s*(?:async\s+)?\(|const\s+\w+\s*=\s*function)/;
+  /^(?:export\s+)?(?:async\s+)?(?:function\s+\w|class\s+\w|const\s+\w+\s*=\s*(?:async\s+)?\(|const\s+\w+\s*=\s*function|\w+\.\w+\s*=\s*(?:async\s+)?function)/;
 
 const FALLBACK_WINDOW = 50;
 
