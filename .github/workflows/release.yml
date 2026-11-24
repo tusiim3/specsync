@@ -1,7 +1,8 @@
 # Runs when a release is published on GitHub (Releases → Draft a new release,
 # tag like v1.2.3 targeting master). It checks the tag matches package.json,
-# runs the checks, publishes to npm (when the NPM_TOKEN secret exists) and moves
-# the major tag (v1) so `uses: tusiim3/specsync@v1` picks up the new release.
+# runs the checks, publishes @tusiim3/specsync to npm (trusted publishing, or
+# the NPM_TOKEN secret until that is set up) and moves the major tag (v1) so
+# `uses: tusiim3/specsync@v1` picks up the new release.
 name: release
 
 on:
@@ -16,12 +17,13 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.tag_name }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          # Node 24 ships npm 11, which trusted publishing needs (11.5.1+).
+          node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
       - name: Tag matches package.json
@@ -35,19 +37,14 @@ jobs:
           fi
       - run: npm ci
       - run: npm run typecheck && npm run lint && npm test && npm run build
-      - name: Check for an npm token
-        id: token
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: echo "present=$([ -n "$NPM_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      # Trusted publishing (OIDC) is used when it is set up for the package on
+      # npmjs.com; until then the NPM_TOKEN secret is used. Provenance and
+      # public access come from publishConfig in package.json.
       - name: Publish to npm
-        if: steps.token.outputs.present == 'true' && !github.event.release.prerelease
-        run: npm publish --provenance --access public
+        if: ${{ !github.event.release.prerelease }}
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Skipped npm
-        if: steps.token.outputs.present != 'true'
-        run: echo "::notice::Add an NPM_TOKEN repository secret to publish to npm."
       - name: Move the major tag
         if: ${{ !github.event.release.prerelease }}
         env:

@@ -39,7 +39,7 @@ if (reportPath) {
     else if (m[1] === '0') { html += '</span>'.repeat(open.length); open = []; }
     else { html += `<span class="${colors[m[1]] ?? ''}">`; open.push(m[1]); }
   }
-  const command = 'npx specsync run --spec docs/spec.md';
+  const command = 'npx @tusiim3/specsync run --spec docs/spec.md';
   const tpl = await readFile(resolve(assets, 'src/terminal.html'), 'utf-8');
   await writeFile(resolve(assets, 'src/terminal.out.html'), tpl.replace('{{COMMAND}}', esc(command)).replace('{{OUTPUT}}', html));
   await shot('terminal.out.html', '', 'terminal.png', { width: 1000, height: 400 });

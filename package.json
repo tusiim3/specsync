@@ -1,5 +1,5 @@
 {
-  "name": "specsync",
+  "name": "@tusiim3/specsync",
   "version": "1.0.0",
   "description": "Find where your code has drifted from your spec. Maps every requirement in a PRD or spec to the code that implements it, and flags what is missing.",
   "keywords": [
@@ -95,5 +95,9 @@
     "onnxruntime-node@1.24.3": true,
     "protobufjs@7.6.6": true,
     "sharp@0.34.5": true
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

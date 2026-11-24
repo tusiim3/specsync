@@ -13,7 +13,7 @@
 **SpecSync reads your spec or PRD, finds the code behind every requirement, and tells you which ones are implemented, which are half done, and which nothing implements.** Run it locally or on every pull request, where it comments what a change broke.
 
 ```bash
-npx specsync run --spec docs/spec.md --repo src
+npx @tusiim3/specsync run --spec docs/spec.md --repo src
 ```
 
 <img alt="SpecSync terminal report: coverage 69/100, with missing, partial and implemented requirements and the code that implements each" src=".github/assets/terminal.png" width="100%">
@@ -29,7 +29,7 @@ npx specsync run --spec docs/spec.md --repo src
 
 ## Contents
 
-[Quick start](#quick-start) · [Pull requests](#on-every-pull-request) · [How it works](#how-it-works) · [Verdicts and score](#verdicts-and-the-score) · [Accuracy](#accuracy) · [CLI](#cli-reference) · [Configuration](#configuration) · [Providers](#providers-and-privacy) · [Embeddings](#embeddings) · [Compared with](#how-it-compares) · [Limits](#limits) · [Development](#development)
+[Quick start](#quick-start) · [Pull requests](#on-every-pull-request) · [How it works](#how-it-works) · [Verdicts and score](#verdicts-and-the-score) · [Accuracy](#accuracy) · [CLI](#cli-reference) · [Configuration](#configuration) · [Providers](#providers-and-privacy) · [Embeddings](#embeddings) · [Compared with](#how-it-compares) · [Limits](#limits) · [Contributing](#contributing)
 
 ## Quick start
 
@@ -42,7 +42,7 @@ npx specsync run --spec docs/spec.md --repo src
 2. Create a config in your project (optional, but makes every later command short):
 
    ```bash
-   npx specsync init
+   npx @tusiim3/specsync init
    ```
 
    This writes `specsync.config.json` pointing at your spec and code, and adds `.specsync/` (cache and history) to `.gitignore`.
@@ -50,18 +50,18 @@ npx specsync run --spec docs/spec.md --repo src
 3. Run it:
 
    ```bash
-   npx specsync run
+   npx @tusiim3/specsync run
    ```
 
 You get the report in the terminal. Add `--md report.md`, `--json report.json` or `--sarif specsync.sarif` to also write files. The next run reuses cached verdicts and only re-checks requirements whose text or code changed.
 
-To see what a run would cost before it makes any calls:
+To see how many model calls a run needs before making any:
 
 ```bash
-npx specsync run --dry-run
+npx @tusiim3/specsync run --dry-run
 ```
 
-> Not published to npm yet? Run from a clone: `npm ci && npm run build && node dist/bin.js run ...`
+To pin a version in a project, install it as a dev dependency with `npm install -D @tusiim3/specsync` and run it as `npx specsync`. Node.js 22.13 or newer is required.
 
 ## On every pull request
 
@@ -76,7 +76,7 @@ jobs:
   spec-coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: tusiim3/specsync@v1
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -115,7 +115,7 @@ It also writes the full report to the job summary, and with `sarif: specsync.sar
 
 Outputs: `score`, `exit-code`, `report-json`, `report-markdown`. On pull requests from forks the token is read-only, so the action warns and leaves the report in the job summary instead of commenting.
 
-This repository runs SpecSync on itself: [`docs/spec.md`](docs/spec.md) is SpecSync's own specification, checked against `src/` on every PR.
+SpecSync checks itself the same way: [`docs/spec.md`](docs/spec.md) is its own specification, checked against `src/` on every pull request.
 
 ## How it works
 
@@ -155,14 +155,14 @@ Cost scales with the number of requirements, not the size of the codebase: one c
 
 ## Accuracy
 
-`npm run eval` scores SpecSync against hand-labelled requirements ([`eval/cases.json`](eval/cases.json)): a multi-language fixture app and Express 5's `lib/` against an Express spec. Where a careful reviewer could defend more than one verdict, both count.
+SpecSync is measured against hand-labelled requirements ([`eval/cases.json`](eval/cases.json)): a small TypeScript, Python and Go app, and Express 5's `lib/` checked against an Express spec. Where a careful reviewer could defend more than one verdict, either counts as correct.
 
 | Model | Embeddings | Verdict accuracy | Gap precision | Gap recall |
 |---|---|---|---|---|
 | Gemini 3.5 Flash-Lite (default, free tier) | local `bge-small-en-v1.5` (default) | 17/17 (100%) | 100% | 100% |
 | Gemini 3.5 Flash-Lite | Gemini `gemini-embedding-001` | 16/17 (94%) | 100% | 100% |
 
-That is a small set, so treat it as a smoke test rather than a benchmark. Results also vary a little between runs of the same model. Run it with your own provider: `npm run eval -- --model <id>`.
+It is a small set, so read it as a sanity check rather than a benchmark; results also vary slightly between runs.
 
 ## CLI reference
 
@@ -209,7 +209,7 @@ Paths on the command line are relative to where you run it; paths in a config fi
 
 ## Configuration
 
-`specsync.config.json` (or `.specsyncrc.json`). Every field is optional; add `"$schema": "./node_modules/specsync/schema/specsync.schema.json"` for editor autocomplete.
+`specsync.config.json` (or `.specsyncrc.json`). Every field is optional; add `"$schema": "./node_modules/@tusiim3/specsync/schema/specsync.schema.json"` for editor autocomplete.
 
 ```jsonc
 {
@@ -249,33 +249,29 @@ Environment variables: `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, 
 
 ## Providers and privacy
 
-| Provider | Key | Default model | Price per 1M tokens (in / out) |
-|---|---|---|---|
-| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` | $0.30 / $2.50, free tier available |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-5-5` | $0.10 / $0.50 |
-| OpenAI | `OPENAI_API_KEY` | `gpt-5.4-mini` | $0.75 / $4.50 |
-| Ollama | none (local) | `qwen3:8b` | free, runs on an 8 GB machine |
-| OpenAI-compatible | `SPECSYNC_API_KEY` | set `provider.model` | |
+| Provider | Key | Default model |
+|---|---|---|
+| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` (free tier available) |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-5-5` |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5.4-mini` |
+| Ollama | none (runs locally) | `qwen3:8b` |
+| OpenAI-compatible | `SPECSYNC_API_KEY` | set with `provider.model` |
 
-`auto` uses the first of these that is configured. Requests use each provider's structured-output mode, so replies are schema-checked JSON.
-
-Defaults are the cheap tier of each provider: a run makes one call per requirement (roughly 2,000 input tokens each) and caches it, so even a 100-requirement spec costs cents. Want more judgement on hard specs? Pick a bigger model with `--model`, for example `gemini-3.5-flash`, `claude-sonnet-5-5` or `gpt-5.4`, and compare with `npm run eval`.
+`auto` uses the first provider that is configured, in the order above. Replies use each provider's structured-output mode, so they are schema-checked JSON. A run makes one call per requirement and caches it, so even a large spec costs little; use `--model` to pick a larger model for harder specs.
 
 ### Embeddings
 
-Embeddings help match a requirement to code that uses different words than the spec. You choose where they run:
+Embeddings help match a requirement to code that uses different words than the spec. Choose where they run with `--embeddings`:
 
-| `--embeddings` | What happens | Setup |
+| `--embeddings` | What happens | Needs |
 |---|---|---|
-| `auto` (default) | Uses the local model; if it can't be downloaded (offline, firewall), switches to Gemini or OpenAI embeddings when you have that key | none |
-| `local` | [`bge-small-en-v1.5`](https://huggingface.co/Xenova/bge-small-en-v1.5), downloaded once (~35 MB) from Hugging Face and run on your CPU. Code never leaves your machine for this step | none; needs `huggingface.co` reachable the first time |
-| `gemini` | `gemini-embedding-001` via the Gemini API | `GEMINI_API_KEY` |
+| `auto` (default) | Uses the local model; if it can't be downloaded (offline, firewall), switches to Gemini or OpenAI embeddings | nothing |
+| `local` | [`bge-small-en-v1.5`](https://huggingface.co/Xenova/bge-small-en-v1.5) on your CPU, downloaded automatically on first use (~35 MB) and cached. Code stays on your machine for this step | access to `huggingface.co` the first time |
+| `gemini` | `gemini-embedding-001` | `GEMINI_API_KEY` |
 | `openai` | `text-embedding-3-small` | `OPENAI_API_KEY` |
 | `openai-compatible` | Any `/embeddings` endpoint | `embeddings.baseUrl` and `embeddings.model` |
 
-You don't need to install anything for `local`: SpecSync downloads the model itself on first use and caches it (set `SPECSYNC_MODEL_CACHE` to choose where). API embeddings on free tiers are rate limited (Gemini allows 100 texts a minute), so a first run on a large repo is slower there; the cache makes every later run fast.
-
-`npm run eval:retrieval` measures how often the right file is among the top results. On the labelled requirements in [`eval/retrieval.json`](eval/retrieval.json) (31 across three codebases), `bge-small-en-v1.5` found a correct file in the top 2 every time with an MRR of 0.98, ahead of `all-MiniLM-L6-v2` (0.95) and the larger `bge-base-en-v1.5` (0.91). Keyword search alone also scored 0.98 there, because those specs mostly reuse the code's own names; embeddings earn their keep when the spec is written in product language.
+Set `SPECSYNC_MODEL_CACHE` to choose where the local model is stored. Free-tier embedding APIs are rate limited (Gemini allows 100 texts a minute), so the first run on a large repo is slower there; later runs use the cache.
 
 **What leaves your machine:** each requirement's text and the code chunks retrieved for it are sent to the LLM provider you choose, plus all code chunks to the embedding API if you pick `gemini`, `openai` or `openai-compatible` embeddings. Nothing goes to SpecSync itself. For code that must not leave your network, use Ollama or a self-hosted OpenAI-compatible server with `--embeddings local`.
 
@@ -297,23 +293,9 @@ They work well together: spec-driven tools help you write the code, and SpecSync
 - Very large requirements are judged as one unit; `--extract llm` splits them into atomic ones.
 - PDF heading detection is heuristic (font size and numbering). Tagged Markdown or Word documents give the cleanest results.
 
-## Development
+## Contributing
 
-```bash
-npm ci
-npm test            # vitest, offline: scripted provider and hashed embeddings
-npm run lint
-npm run typecheck
-npm run build
-npm run eval        # real provider, labelled verdicts
-npm run eval:retrieval -- --embeddings local   # retrieval only, no LLM calls
-```
-
-`test/fixtures/todo-api` is a small TypeScript, Python and Go app with a spec and known answers; the golden test runs the whole pipeline on it. `scripts/render-assets.mjs` regenerates the README images from `.github/assets/src`, the terminal image from a real report.
-
-### Releasing
-
-Bump `version` in `package.json` on master, then on GitHub open **Releases → Draft a new release**, create the tag `v<version>` targeting `master`, and publish. The release workflow checks the tag matches `package.json`, runs the checks, publishes to npm (with the `NPM_TOKEN` secret) and moves the major tag (`v1`) so the Action's `@v1` users get the update.
+Bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and the evaluation scripts.
 
 ## License
 
