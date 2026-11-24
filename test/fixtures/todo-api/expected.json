@@ -1,0 +1,16 @@
+{
+  "description": "Ground-truth verdicts for the todo-api fixture, used by the golden test and the eval.",
+  "spec": "docs/spec.md",
+  "repo": ".",
+  "labels": {
+    "REQ-1": { "verdict": "implemented", "evidence": ["src/server.ts"] },
+    "REQ-2": { "verdict": "implemented", "evidence": ["src/server.ts"] },
+    "REQ-3": { "verdict": "implemented", "evidence": ["src/server.ts"] },
+    "REQ-4": { "verdict": "implemented", "evidence": ["src/auth.ts"] },
+    "REQ-5": { "verdict": "partial", "evidence": ["worker/reminders.py"] },
+    "REQ-6": { "verdict": "implemented", "evidence": ["export/exporter.go"] },
+    "REQ-7": { "verdict": "missing" },
+    "REQ-8": { "verdict": "missing" },
+    "REQ-9": { "verdict": "not-verifiable" }
+  }
+}

@@ -1,55 +1,103 @@
-import { GeminiProvider } from './gemini-provider.js';
-import { OpenAIProvider } from './openai-provider.js';
-import { OllamaProvider } from './ollama-provider.js';
-import { ConfigurationError } from './provider.js';
-import type { LLMProvider } from './provider.js';
+import type { Config } from '../config.js';
+import { AnthropicProvider, DEFAULT_ANTHROPIC_MODEL } from './anthropic.js';
+import { OpenAICompatibleProvider } from './openai-compatible.js';
+import { ConfigurationError, type LLMProvider } from './provider.js';
+
+export const GEMINI_OPENAI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
+export const DEFAULT_MODELS = {
+  gemini: 'gemini-3.5-flash-lite',
+  anthropic: DEFAULT_ANTHROPIC_MODEL,
+  openai: 'gpt-5-mini',
+  ollama: 'llama3.1',
+} as const;
+
+type Env = Record<string, string | undefined>;
+
+function ollamaBaseUrl(env: Env): string {
+  return (env['OLLAMA_BASE_URL'] ?? env['OLLAMA_HOST'] ?? 'http://localhost:11434').replace(/\/+$/, '');
+}
+
+/** True when an Ollama server answers on its tags endpoint. */
+export async function ollamaReachable(env: Env = process.env): Promise<boolean> {
+  try {
+    const res = await fetch(`${ollamaBaseUrl(env)}/api/tags`, { signal: AbortSignal.timeout(1500) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function need(env: Env, key: string, provider: string): string {
+  const v = env[key];
+  if (!v) throw new ConfigurationError(`Provider "${provider}" needs ${key} to be set (env or .env file).`);
+  return v;
+}
 
 /**
- * Auto-selects an LLM provider from environment variables.
- * Priority order:
- *   1. GEMINI_API_KEY  → GeminiProvider
- *   2. OPENAI_API_KEY  → OpenAIProvider
- *   3. Ollama reachable → OllamaProvider
- *   4. None            → throws ConfigurationError
+ * Build the LLM provider from config and environment.
+ * "auto" picks the first available of: Gemini, Anthropic, OpenAI, local Ollama.
  */
-export async function resolveProvider(): Promise<LLMProvider> {
-  const geminiKey = process.env['GEMINI_API_KEY'];
-  if (geminiKey) {
-    const provider = new GeminiProvider(geminiKey);
-    // Only probe to catch definitively invalid keys.
-    // On network errors or any non-auth failure, trust the key and proceed.
-    try {
-      await provider.complete('{"test":true}');
-      return provider;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isAuthError =
-        msg.includes('API_KEY_INVALID') ||
-        msg.includes('API key not valid') ||
-        msg.includes('PERMISSION_DENIED') ||
-        msg.includes('401');
-      if (isAuthError) {
-        process.stderr.write(
-          '  Warning: GEMINI_API_KEY is invalid, falling back to next provider.\n',
+export async function resolveProvider(config: Config, env: Env = process.env): Promise<LLMProvider> {
+  const p = config.provider;
+  let name = p.name;
+  const envModel = env['SPECSYNC_MODEL'];
+
+  if (name === 'auto') {
+    if (env['GEMINI_API_KEY']) name = 'gemini';
+    else if (env['ANTHROPIC_API_KEY']) name = 'anthropic';
+    else if (env['OPENAI_API_KEY']) name = 'openai';
+    else if (await ollamaReachable(env)) name = 'ollama';
+    else throw new ConfigurationError();
+  }
+
+  const timeoutMs = p.timeoutMs;
+  switch (name) {
+    case 'gemini':
+      return new OpenAICompatibleProvider({
+        name: 'Gemini',
+        model: p.model ?? envModel ?? env['GEMINI_MODEL'] ?? DEFAULT_MODELS.gemini,
+        apiKey: need(env, p.apiKeyEnv ?? 'GEMINI_API_KEY', 'gemini'),
+        baseURL: p.baseUrl ?? GEMINI_OPENAI_BASE_URL,
+        timeoutMs,
+      });
+    case 'anthropic':
+      return new AnthropicProvider({
+        model: p.model ?? envModel ?? env['ANTHROPIC_MODEL'] ?? DEFAULT_MODELS.anthropic,
+        apiKey: need(env, p.apiKeyEnv ?? 'ANTHROPIC_API_KEY', 'anthropic'),
+        baseURL: p.baseUrl,
+        timeoutMs,
+      });
+    case 'openai':
+      return new OpenAICompatibleProvider({
+        name: 'OpenAI',
+        model: p.model ?? envModel ?? env['OPENAI_MODEL'] ?? DEFAULT_MODELS.openai,
+        apiKey: need(env, p.apiKeyEnv ?? 'OPENAI_API_KEY', 'openai'),
+        baseURL: p.baseUrl ?? env['OPENAI_BASE_URL'],
+        timeoutMs,
+      });
+    case 'ollama':
+      return new OpenAICompatibleProvider({
+        name: 'Ollama',
+        model: p.model ?? envModel ?? env['OLLAMA_MODEL'] ?? DEFAULT_MODELS.ollama,
+        apiKey: 'ollama',
+        baseURL: p.baseUrl ?? `${ollamaBaseUrl(env)}/v1`,
+        timeoutMs,
+      });
+    case 'openai-compatible': {
+      const baseURL = p.baseUrl ?? env['SPECSYNC_BASE_URL'];
+      const model = p.model ?? envModel;
+      if (!baseURL || !model) {
+        throw new ConfigurationError(
+          'Provider "openai-compatible" needs provider.baseUrl and provider.model (or SPECSYNC_BASE_URL and SPECSYNC_MODEL).',
         );
-      } else {
-        // Network hiccup, timeout, etc. — key may still be valid, use it
-        process.stderr.write(
-          `  Note: Gemini probe inconclusive (${msg.slice(0, 80)}), proceeding with Gemini anyway.\n`,
-        );
-        return provider;
       }
+      return new OpenAICompatibleProvider({
+        name: 'OpenAI-compatible',
+        model,
+        apiKey: env[p.apiKeyEnv ?? 'SPECSYNC_API_KEY'] ?? 'none',
+        baseURL,
+        timeoutMs,
+      });
     }
   }
-
-  const openaiKey = process.env['OPENAI_API_KEY'];
-  if (openaiKey) {
-    return new OpenAIProvider(openaiKey);
-  }
-
-  if (await OllamaProvider.isReachable()) {
-    return new OllamaProvider();
-  }
-
-  throw new ConfigurationError();
 }

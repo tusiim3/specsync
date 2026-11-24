@@ -1,24 +1,25 @@
 node_modules/
 dist/
+coverage/
 .env
 .env.*
+!.env.example
 *.env
 
-# Demo target repo — cloned separately, not committed
+# Demo target repo, cloned separately
 demo/target-repo/
 
-# OS
-.DS_Store
-Thumbs.db
+# SpecSync cache, history and downloaded models
+.specsync/
 
-# IDE
-.vscode/
-.idea/
-
-# Cache (transformers model weights)
-.cache/
-*.cache
-
-# Drift outputs (generated, not source)
+# Reports written by local runs
 drift-report.md
 drift-map.json
+specsync-report.*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tsbuildinfo

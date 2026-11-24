@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: CLI smoke test
+        run: |
+          node dist/bin.js --version
+          node dist/bin.js run --help > /dev/null
+      - name: Package contents
+        if: matrix.node == 22
+        run: |
+          npm pack --dry-run 2>&1 | tee pack.txt
+          grep -q "dist/bin.js" pack.txt
+          if grep -q " src/" pack.txt; then echo "source files leaked into the package"; exit 1; fi

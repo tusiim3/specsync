@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "spec": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "repo": {
+      "default": ".",
+      "type": "string"
+    },
+    "include": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "exclude": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excludeTests": {
+      "default": true,
+      "type": "boolean"
+    },
+    "provider": {
+      "default": {
+        "name": "auto",
+        "concurrency": 4,
+        "timeoutMs": 120000,
+        "maxRetries": 4
+      },
+      "type": "object",
+      "properties": {
+        "name": {
+          "default": "auto",
+          "type": "string",
+          "enum": [
+            "auto",
+            "gemini",
+            "anthropic",
+            "openai",
+            "ollama",
+            "openai-compatible"
+          ]
+        },
+        "model": {
+          "type": "string"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "apiKeyEnv": {
+          "type": "string"
+        },
+        "concurrency": {
+          "default": 4,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "timeoutMs": {
+          "default": 120000,
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 9007199254740991
+        },
+        "maxRetries": {
+          "default": 4,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "embeddings": {
+      "default": {
+        "provider": "local"
+      },
+      "type": "object",
+      "properties": {
+        "provider": {
+          "default": "local",
+          "type": "string",
+          "enum": [
+            "local",
+            "openai",
+            "gemini",
+            "openai-compatible"
+          ]
+        },
+        "model": {
+          "type": "string"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "apiKeyEnv": {
+          "type": "string"
+        }
+      }
+    },
+    "retrieval": {
+      "default": {
+        "topK": 8,
+        "maxCandidateTokens": 8000
+      },
+      "type": "object",
+      "properties": {
+        "topK": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "maxCandidateTokens": {
+          "default": 8000,
+          "type": "integer",
+          "minimum": 500,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "extraction": {
+      "default": "headings",
+      "type": "string",
+      "enum": [
+        "headings",
+        "llm"
+      ]
+    },
+    "ignoreSections": {
+      "default": [
+        "^(table of )?contents$",
+        "^toc$",
+        "^glossary$",
+        "^references?$",
+        "^(change ?log|revision history|document history)$",
+        "^(out of scope|non[- ]?goals?|not in scope)$",
+        "^appendix\\b",
+        "^open questions$"
+      ],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "thresholds": {
+      "default": {
+        "failOn": [
+          "error"
+        ]
+      },
+      "type": "object",
+      "properties": {
+        "minScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "failOn": {
+          "default": [
+            "error"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "partial",
+              "error",
+              "regression"
+            ]
+          }
+        }
+      }
+    },
+    "surplus": {
+      "default": {
+        "limit": 25
+      },
+      "type": "object",
+      "properties": {
+        "limit": {
+          "default": 25,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "cacheDir": {
+      "default": ".specsync/cache",
+      "type": "string"
+    },
+    "historyFile": {
+      "default": ".specsync/history.json",
+      "type": "string"
+    },
+    "budget": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "maxLlmCalls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "maxInputTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "title": "SpecSync configuration"
+}
