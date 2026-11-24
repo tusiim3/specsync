@@ -1,52 +1,122 @@
-/** Shared domain types for SpecSync */
+/** Shared domain types for SpecSync. */
 
-/** A single requirement extracted from the spec document */
+/** How well a requirement is implemented by the code. */
+export type Verdict = 'implemented' | 'partial' | 'missing' | 'not-verifiable' | 'error';
+
+export const VERDICTS: readonly Verdict[] = [
+  'implemented',
+  'partial',
+  'missing',
+  'not-verifiable',
+  'error',
+];
+
+/** A single requirement extracted from a spec document. */
 export interface Requirement {
-  id: string;        // stable slug, e.g. "trust-proxy-configuration"
-  heading: string;   // original heading text
-  body: string;      // full requirement prose
+  /** Stable id: an explicit id from the spec (e.g. "REQ-12") or a slug of the heading. */
+  id: string;
+  /** Heading text of the section the requirement came from. */
+  heading: string;
+  /** Parent headings, outermost first (excludes the document title). */
+  path: string[];
+  /** Requirement prose (Markdown). */
+  body: string;
+  /** Where it came from, for links and SARIF locations. */
+  source: { file: string; line: number };
 }
 
-/** A chunk of code extracted from the target codebase */
+export type ChunkKind = 'function' | 'method' | 'class' | 'type' | 'module' | 'window';
+
+/** A contiguous slice of a source file. */
 export interface CodeChunk {
-  id: string;         // "<filePath>:<startLine>"
+  /** "<filePath>:<startLine>-<endLine>" */
+  id: string;
+  /** Repo-relative POSIX path. */
   filePath: string;
   startLine: number;
+  endLine: number;
+  language: string;
+  kind: ChunkKind;
+  /** Qualified symbol name when the chunk is a declaration, e.g. "UserService.create". */
+  symbol?: string;
+  /** True when the declaration is part of the file's public surface. */
+  exported: boolean;
   content: string;
+  /** sha256 of content, used for caching. */
+  hash: string;
 }
 
-/** A code chunk with its embedding vector attached */
 export interface EmbeddedChunk extends CodeChunk {
   vector: number[];
 }
 
-/** Result of a single coverage-agent evaluation */
-export interface CoverageResult {
-  requirementId: string;
-  covered: boolean;
-  confidence: number;       // 0.0 – 1.0
-  evidence: string[];       // chunk IDs cited (e.g. "lib/router/index.js:42")
-  notes: string;
-}
-
-/** A code chunk with no matching requirement */
-export interface SurplusChunk {
+export interface Evidence {
   chunkId: string;
   filePath: string;
   startLine: number;
-  preview: string;   // first 120 chars of content
+  endLine: number;
+  symbol?: string;
+  reason: string;
 }
 
-/** Aggregated drift report */
+export interface RequirementResult {
+  requirementId: string;
+  verdict: Verdict;
+  /** 0..1, the model's confidence in its verdict. */
+  confidence: number;
+  evidence: Evidence[];
+  notes: string;
+  /** True when the verdict came from the local cache. */
+  cached: boolean;
+  /** Set when verdict is "error". */
+  error?: string;
+}
+
+/** A public symbol that no requirement's evidence points at. */
+export interface SurplusItem {
+  chunkId: string;
+  filePath: string;
+  startLine: number;
+  endLine: number;
+  symbol?: string;
+  kind: ChunkKind;
+}
+
+export interface VerdictCounts {
+  implemented: number;
+  partial: number;
+  missing: number;
+  notVerifiable: number;
+  error: number;
+}
+
+export interface RunStats {
+  files: number;
+  chunks: number;
+  llmCalls: number;
+  cacheHits: number;
+  inputTokens: number;
+  outputTokens: number;
+  durationMs: number;
+}
+
 export interface DriftReport {
+  schemaVersion: 1;
   runId: string;
   timestamp: string;
-  specFile: string;
+  specFiles: string[];
   repoDir: string;
-  score: number;               // 0–100 (% covered)
-  totalRequirements: number;
-  coveredCount: number;
-  gapList: Requirement[];      // requirements with no coverage
-  surplusList: SurplusChunk[]; // code with no spec counterpart
-  details: CoverageResult[];
+  provider: string;
+  model: string;
+  /** 0..100 spec coverage, or null when nothing could be scored. */
+  score: number | null;
+  /** False when any requirement ended in an error, so the score is partial. */
+  complete: boolean;
+  counts: VerdictCounts;
+  requirements: Requirement[];
+  results: RequirementResult[];
+  surplus: SurplusItem[];
+  /** Total public symbols found, so surplus can be shown as "N of M". */
+  publicSymbols: number;
+  stats: RunStats;
 }

@@ -1,0 +1,6 @@
+{
+  "$schema": "./schema/specsync.schema.json",
+  "spec": "docs/spec.md",
+  "repo": "src",
+  "thresholds": { "minScore": 70, "failOn": ["error", "regression"] }
+}

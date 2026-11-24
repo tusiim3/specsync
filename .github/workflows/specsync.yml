@@ -1,0 +1,35 @@
+# SpecSync checks itself: docs/spec.md against src/ on every pull request.
+name: specsync
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: specsync-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  spec-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for an API key
+        id: key
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: echo "present=$([ -n "$GEMINI_API_KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: SpecSync
+        if: steps.key.outputs.present == 'true'
+        uses: ./
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Skipped
+        if: steps.key.outputs.present != 'true'
+        run: echo "::notice::Add a GEMINI_API_KEY repository secret to run SpecSync on pull requests."

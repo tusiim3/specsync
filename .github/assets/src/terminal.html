@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1000px; background: #EAEFF5; }
+  body { padding: 28px; }
+  .win { background: #0E1626; border-radius: 12px; border: 1px solid #273450; overflow: hidden; box-shadow: 0 18px 40px -24px rgba(14, 22, 38, 0.6); }
+  .bar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #152036; border-bottom: 1px solid #273450; }
+  .bar i { width: 11px; height: 11px; border-radius: 50%; background: #273450; display: block; }
+  .bar span { margin-left: 12px; font: 12px 'JetBrains Mono'; color: #8C98AE; }
+  pre { font: 13.5px/1.55 'JetBrains Mono'; color: #E7ECF4; padding: 14px 20px 18px; white-space: pre-wrap; }
+  .prompt { color: #8C98AE; }
+  .b { font-weight: 600; } .dim { color: #8C98AE; } .gray { color: #6B7891; }
+  .red { color: #FF6B86; } .green { color: #3CCFB4; } .yellow { color: #F0B240; }
+  .blue { color: #7AA7FF; } .magenta { color: #E28BFF; } .cyan { color: #7FD4E8; }
+</style>
+</head>
+<body>
+  <div class="win">
+    <div class="bar"><i></i><i></i><i></i><span>todo-api</span></div>
+    <pre><span class="prompt">$</span> {{COMMAND}}
+{{OUTPUT}}</pre>
+  </div>
+</body>
+</html>

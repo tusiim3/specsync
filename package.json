@@ -1,44 +1,95 @@
 {
   "name": "specsync",
-  "version": "0.1.0",
-  "description": "Spec-to-code drift detection using parallel LLM subagents",
+  "version": "1.0.0",
+  "description": "Find where your code has drifted from your spec. Maps every requirement in a PRD or spec to the code that implements it, and flags what is missing.",
+  "keywords": [
+    "spec",
+    "prd",
+    "requirements",
+    "traceability",
+    "drift",
+    "llm",
+    "code-review",
+    "ci",
+    "github-action",
+    "cli"
+  ],
+  "homepage": "https://github.com/tusiim3/specsync#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tusiim3/specsync.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tusiim3/specsync/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Tusiime Mark",
   "type": "module",
-  "main": "dist/cli.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
-    "specsync": "dist/cli.js"
+    "specsync": "dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "schema",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx src/cli.ts",
-    "start": "node --experimental-vm-modules dist/cli.js",
-    "lint": "eslint src --ext .ts",
-    "format": "prettier --write src",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx src/bin.ts",
+    "start": "node dist/bin.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src test",
+    "schema": "tsx scripts/build-schema.ts",
+    "eval": "tsx eval/run.ts",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "eval:retrieval": "tsx eval/retrieval.ts"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "@anthropic-ai/sdk": "^1.13.0",
     "@huggingface/transformers": "^4.2.0",
+    "@vscode/tree-sitter-wasm": "^0.3.1",
     "commander": "^12.1.0",
-    "cosine-similarity": "^1.0.0",
-    "glob": "^11.0.0",
+    "glob": "^14.0.6",
+    "ignore": "^7.0.16",
     "mammoth": "^1.8.0",
     "marked": "^14.1.3",
-    "openai": "^4.77.0",
+    "openai": "^7.63.0",
     "p-limit": "^6.1.0",
-    "pdf-parse": "^1.1.1"
+    "pdfjs-dist": "^6.5.438",
+    "turndown": "^7.2.5",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^22.0.0",
-    "@types/pdf-parse": "^1.1.4",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.0.0",
+    "@types/turndown": "^5.0.6",
+    "docx": "^9.16.0",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
     "prettier": "^3.3.3",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.74.0",
+    "vitest": "^4.1.12"
   },
   "allowScripts": {
     "onnxruntime-node@1.24.3": true,

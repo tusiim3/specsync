@@ -1,0 +1,22 @@
+/** Programmatic API. The CLI (`specsync`) is the main entry point; see README. */
+export { runPipeline, loadRequirements, isDryRunPlan, InputError } from './pipeline.js';
+export type { PipelineOptions, DryRunPlan } from './pipeline.js';
+export { loadConfig, parseConfig, ConfigSchema, ConfigError } from './config.js';
+export type { Config, ConfigInput } from './config.js';
+export { resolveProvider } from './llm/resolver.js';
+export type { LLMProvider, CompletionRequest, CompletionResult } from './llm/provider.js';
+export { ProviderError, ConfigurationError } from './llm/provider.js';
+export { createEmbedder, LocalEmbedder, ApiEmbedder } from './embed/embedder.js';
+export type { Embedder } from './embed/embedder.js';
+export { Cache } from './cache/cache.js';
+export { splitSections } from './ingest/section-split.js';
+export { normalizeToMarkdown } from './ingest/normalize.js';
+export { chunkSource, chunkFiles } from './ingest/code-chunker.js';
+export { computeScore, findSurplus, generateReport } from './report/generator.js';
+export { diffReports } from './report/diff.js';
+export { renderText } from './report/text.js';
+export { renderMarkdown } from './report/markdown.js';
+export { renderSarif } from './report/sarif.js';
+export { evaluateThresholds, EXIT } from './cli.js';
+export type * from './types.js';
+export { VERSION } from './version.js';
