@@ -1,5 +1,5 @@
 import { existsSync } from 'fs';
-import { relative, resolve } from 'path';
+import { isAbsolute, relative, resolve } from 'path';
 import { Cache } from './cache/cache.js';
 import type { Config } from './config.js';
 import { specList } from './config.js';
@@ -48,9 +48,10 @@ export class InputError extends Error {
 const toPosix = (p: string) => p.split('\\').join('/');
 
 /** Path shown in reports: relative to cwd when inside it, so reports are portable. */
-function displayPath(abs: string): string {
-  const rel = relative(process.cwd(), abs);
-  return toPosix(rel && !rel.startsWith('..') ? rel : abs) || '.';
+export function displayPath(abs: string, cwd = process.cwd()): string {
+  const rel = relative(cwd, abs);
+  if (rel === '') return '.';
+  return toPosix(!rel.startsWith('..') && !isAbsolute(rel) ? rel : abs);
 }
 
 /** Check that the spec files and repo exist; returns their absolute paths. */
@@ -146,6 +147,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<DriftReport | 
     maxCandidateTokens: config.retrieval.maxCandidateTokens,
     concurrency: config.provider.concurrency,
     maxRetries: config.provider.maxRetries,
+    requestsPerMinute: config.provider.requestsPerMinute,
     budget: config.budget,
     dryRun: opts.dryRun,
     log: (m) => log(`  ${m}`),
@@ -165,7 +167,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<DriftReport | 
   }
 
   return generateReport({
-    specFiles: specPaths.map(displayPath),
+    specFiles: specPaths.map((p) => displayPath(p)),
     repoDir: displayPath(repoDir),
     provider: provider.name,
     model: provider.model,

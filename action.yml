@@ -1,0 +1,117 @@
+name: SpecSync
+description: Check that your code still implements your spec, and comment spec coverage on pull requests.
+author: Tusiime Mark
+branding:
+  icon: check-square
+  color: green
+
+inputs:
+  spec:
+    description: Spec file(s), space separated. Optional when a config file sets "spec".
+    required: false
+  repo:
+    description: Code directory to analyze. Optional when a config file sets "repo".
+    required: false
+  config:
+    description: Path to specsync.config.json (found automatically in working-directory).
+    required: false
+  provider:
+    description: LLM provider (auto, gemini, anthropic, openai, ollama, openai-compatible). Keys come from env.
+    required: false
+  model:
+    description: Model id for the provider.
+    required: false
+  min-score:
+    description: Fail when spec coverage is below this (0-100).
+    required: false
+  fail-on:
+    description: Comma list of conditions that fail the check: missing, partial, error, regression.
+    required: false
+    default: error,regression
+  compare-base:
+    description: On pull requests, also analyze the base commit and report what changed.
+    required: false
+    default: 'true'
+  comment:
+    description: Post (or update) one comment on the pull request with the report.
+    required: false
+    default: 'true'
+  sarif:
+    description: Path to write a SARIF file for github/codeql-action/upload-sarif. Empty to skip.
+    required: false
+    default: ''
+  working-directory:
+    description: Directory to run in, relative to the repository root.
+    required: false
+    default: .
+  github-token:
+    description: Token used to comment on the pull request.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  score:
+    description: Spec coverage score (0-100), empty when nothing could be scored.
+    value: ${{ steps.run.outputs.score }}
+  exit-code:
+    description: 0 passed, 1 thresholds failed, 2 could not complete.
+    value: ${{ steps.run.outputs.exit-code }}
+  report-json:
+    description: Path to the JSON report.
+    value: ${{ steps.run.outputs.report-json }}
+  report-markdown:
+    description: Path to the Markdown report.
+    value: ${{ steps.run.outputs.report-markdown }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Restore SpecSync cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.working-directory }}/.specsync/cache
+          ~/.cache/specsync-models
+        key: specsync-${{ runner.os }}-${{ github.sha }}
+        restore-keys: specsync-${{ runner.os }}-
+
+    - name: Install SpecSync
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        npm ci --no-audit --no-fund --loglevel=error
+        npm run build --silent
+
+    - name: Run SpecSync
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        INPUT_SPEC: ${{ inputs.spec }}
+        INPUT_REPO: ${{ inputs.repo }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_PROVIDER: ${{ inputs.provider }}
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_MIN_SCORE: ${{ inputs.min-score }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_COMPARE_BASE: ${{ inputs.compare-base }}
+        INPUT_SARIF: ${{ inputs.sarif }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        SPECSYNC_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$SPECSYNC_ACTION_PATH/action/run.sh"
+
+    - name: Comment on pull request
+      if: inputs.comment == 'true' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: node "${{ github.action_path }}/dist/action/comment.js" "${{ steps.run.outputs.comment-file }}"
+
+    - name: Result
+      shell: bash
+      run: exit "${{ steps.run.outputs.exit-code || 2 }}"

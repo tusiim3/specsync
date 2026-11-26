@@ -3,6 +3,7 @@ import {
   ProviderError,
   classifyStatus,
   parseRetryAfter,
+  retryHintFromMessage,
   type CompletionRequest,
   type CompletionResult,
   type LLMProvider,
@@ -77,7 +78,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
   }
 }
 
-function toProviderError(name: string, err: unknown): ProviderError {
+export function toProviderError(name: string, err: unknown): ProviderError {
   if (err instanceof ProviderError) return err;
   if (err instanceof OpenAI.APIConnectionTimeoutError) {
     return new ProviderError(`${name} request timed out`, { retryable: true, cause: err });
@@ -91,7 +92,7 @@ function toProviderError(name: string, err: unknown): ProviderError {
       status: err.status,
       retryable,
       fatal,
-      retryAfterMs: parseRetryAfter(err.headers?.get?.('retry-after')),
+      retryAfterMs: parseRetryAfter(err.headers?.get?.('retry-after')) ?? retryHintFromMessage(err.message),
       cause: err,
     });
   }

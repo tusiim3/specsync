@@ -71,6 +71,12 @@ export function parseRetryAfter(value: string | null | undefined): number | unde
   return undefined;
 }
 
+/** Some APIs (Gemini) put the wait in the message: "Please retry in 42.9s". */
+export function retryHintFromMessage(message: string): number | undefined {
+  const m = /retry in (\d+(?:\.\d+)?)\s*s/i.exec(message);
+  return m ? Math.ceil(Number(m[1]) * 1000) : undefined;
+}
+
 export class ConfigurationError extends Error {
   constructor(message?: string) {
     super(

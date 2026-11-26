@@ -1,9 +1,6 @@
 # Express Framework — Specification Document
 
-> Version: 1.0 (for SpecSync demo)
 > This document defines the expected behavior of the Express.js HTTP framework.
-> Some sections are intentionally under-specified or describe features not present
-> in Express core — these produce the "drift" that SpecSync detects.
 
 ---
 
@@ -97,8 +94,6 @@ significant:
 
 ## Request Body Size Limit Enforcement
 
-⚠️ **INTENTIONAL DRIFT — gap expected**
-
 The framework must enforce a configurable maximum size for incoming request
 bodies to protect against denial-of-service attacks via oversized payloads:
 
@@ -109,13 +104,8 @@ bodies to protect against denial-of-service attacks via oversized payloads:
   with `413 Payload Too Large` before the body is fully read.
 - The limit must apply independently to each content-type parser.
 
-*Note: Express core does not implement this natively — it is delegated to the
-`body-parser` package. This section intentionally has no direct implementation
-in `express/lib/` and should appear as a GAP in the drift report.*
 
 ## Rate Limiting Middleware
-
-⚠️ **INTENTIONAL DRIFT — gap expected**
 
 The framework must include built-in rate limiting to prevent abuse:
 
@@ -128,6 +118,3 @@ The framework must include built-in rate limiting to prevent abuse:
 - The rate limiter must be configurable and mountable as middleware:
   `app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }))`.
 
-*Note: Express core has no rate limiting implementation. This is handled by the
-`express-rate-limit` package. This section intentionally has no direct implementation
-in `express/lib/` and should appear as a GAP in the drift report.*

@@ -49,9 +49,11 @@ const ProviderSchema = z
     apiKeyEnv: z.string().optional(),
     concurrency: z.number().int().min(1).max(64).default(4),
     timeoutMs: z.number().int().min(1000).default(120_000),
-    maxRetries: z.number().int().min(0).max(10).default(4),
+    maxRetries: z.number().int().min(0).max(10).default(6),
+    /** Pace calls to stay under a provider quota (e.g. 15 for Gemini's free tier). */
+    requestsPerMinute: z.number().positive().optional(),
   })
-  .default({ name: 'auto', concurrency: 4, timeoutMs: 120_000, maxRetries: 4 });
+  .default({ name: 'auto', concurrency: 4, timeoutMs: 120_000, maxRetries: 6 });
 
 const EmbeddingsSchema = z
   .object({

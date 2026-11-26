@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Bm25Index, HybridRetriever, cosine, stem, tokenize } from '../src/search/retrieval.js';
 import { extractJson, interpretResponse, renderCandidates } from '../src/agents/verdict.js';
 import { withRetry } from '../src/llm/retry.js';
-import { ProviderError, classifyStatus, parseRetryAfter } from '../src/llm/provider.js';
+import { ProviderError, classifyStatus, parseRetryAfter, retryHintFromMessage } from '../src/llm/provider.js';
 import { Cache } from '../src/cache/cache.js';
 import type { CodeChunk, EmbeddedChunk, Requirement } from '../src/types.js';
 import { FakeEmbedder, withTempDir } from './helpers.js';
@@ -136,7 +136,7 @@ describe('withRetry', () => {
       { maxRetries: 3, baseDelayMs: 100, sleep: async (ms) => void sleeps.push(ms), random: () => 0 },
     );
     expect(result).toBe('ok');
-    expect(sleeps).toEqual([50, 7000]);
+    expect(sleeps).toEqual([50, 7250]);
   });
 
   it('does not retry non-retryable errors and gives up after maxRetries', async () => {
@@ -160,6 +160,8 @@ describe('withRetry', () => {
     expect(classifyStatus(400)).toEqual({ retryable: false, fatal: false });
     expect(parseRetryAfter('3')).toBe(3000);
     expect(parseRetryAfter(null)).toBeUndefined();
+    expect(retryHintFromMessage('Quota exceeded. Please retry in 42.94s.')).toBe(42940);
+    expect(retryHintFromMessage('nope')).toBeUndefined();
   });
 });
 
@@ -197,5 +199,27 @@ describe('Cache', () => {
       await c.load();
       expect(c.getVerdict('x')).toBeUndefined();
     });
+  });
+});
+
+describe('RateGate', () => {
+  it('spaces calls by requests-per-minute and pauses everyone after a rate limit', async () => {
+    const { RateGate } = await import('../src/llm/rate-gate.js');
+    let now = 0;
+    const waits: number[] = [];
+    const gate = new RateGate(60, () => now, async (ms) => {
+      waits.push(ms);
+    });
+    await Promise.all([gate.wait(), gate.wait(), gate.wait()]);
+    expect(waits).toEqual([1000, 2000]);
+    waits.length = 0;
+    now = 10_000;
+    gate.pause(5000);
+    await gate.wait();
+    expect(waits).toEqual([5000]);
+    const free = new RateGate(undefined, () => 0, async (ms) => void waits.push(ms));
+    waits.length = 0;
+    await free.wait();
+    expect(waits).toEqual([]);
   });
 });

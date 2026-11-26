@@ -4,7 +4,7 @@ import type { JsonSchemaSpec } from '../llm/provider.js';
 import { requirementText } from '../ingest/section-split.js';
 
 /** Bump when the prompt or schema changes so cached verdicts are not reused. */
-export const PROMPT_VERSION = '3';
+export const PROMPT_VERSION = '4';
 
 export const VerdictResponse = z.object({
   verdict: z.enum(['implemented', 'partial', 'missing', 'not-verifiable']),
@@ -45,11 +45,12 @@ export const SYSTEM_PROMPT = `You audit whether a codebase implements a requirem
 
 You get one requirement and a set of code chunks retrieved from the repository. Decide:
 - "implemented": the shown code clearly does what the requirement asks, including its specific conditions, limits and error behaviour.
-- "partial": some of the requirement is implemented but something it explicitly asks for is missing or different. Say what is missing in notes.
-- "missing": the shown code does not implement it. Related but different behaviour is "missing", not "partial".
+- "partial": the shown code implements part of what the requirement asks, but something it explicitly asks for is missing, different, or not visible in the shown code. Say what is missing in notes.
+- "missing": none of what the requirement asks is implemented in the shown code. Code that is only related (same area, different behaviour) does not count as partial.
 - "not-verifiable": the requirement cannot be judged from source code at all (team process, documentation, legal, uptime SLAs, visual design).
 
 Rules:
+- Check every condition in the requirement (each limit, status code, field, edge case) against the code; "implemented" means all of them are visibly handled.
 - Judge only from the code shown. Do not assume code that is not shown exists. If the retrieved chunks are unrelated, the answer is "missing".
 - Cite evidence by chunk label (e.g. "C2"). Cite only chunks that actually implement part of the requirement; cite nothing for "missing" or "not-verifiable".
 - confidence is how sure you are of the verdict (not how complete the implementation is).

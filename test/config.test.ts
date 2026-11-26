@@ -10,7 +10,7 @@ describe('config', () => {
   it('applies defaults', () => {
     const c = parseConfig({});
     expect(c.repo).toBe('.');
-    expect(c.provider).toMatchObject({ name: 'auto', concurrency: 4, maxRetries: 4 });
+    expect(c.provider).toMatchObject({ name: 'auto', concurrency: 4, maxRetries: 6 });
     expect(c.retrieval.topK).toBe(8);
     expect(c.thresholds.failOn).toEqual(['error']);
     expect(specList(parseConfig({ spec: 'a.md' }))).toEqual(['a.md']);

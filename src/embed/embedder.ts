@@ -2,6 +2,8 @@ import OpenAI from 'openai';
 import type { Config } from '../config.js';
 import { GEMINI_OPENAI_BASE_URL } from '../llm/resolver.js';
 import { ConfigurationError } from '../llm/provider.js';
+import { toProviderError } from '../llm/openai-compatible.js';
+import { withRetry } from '../llm/retry.js';
 import type { Cache } from '../cache/cache.js';
 
 export interface Embedder {
@@ -62,16 +64,36 @@ export class ApiEmbedder implements Embedder {
   readonly id: string;
   private readonly client: OpenAI;
 
-  constructor(private readonly model: string, apiKey: string, baseURL?: string) {
+  constructor(
+    private readonly model: string,
+    apiKey: string,
+    baseURL?: string,
+    private readonly log: (msg: string) => void = () => {},
+    private readonly sleep?: (ms: number) => Promise<void>,
+  ) {
     this.id = `api:${baseURL ?? 'openai'}:${model}`;
-    this.client = new OpenAI({ apiKey, baseURL, timeout: 120_000, maxRetries: 4 });
+    this.client = new OpenAI({ apiKey, baseURL, timeout: 120_000, maxRetries: 0 });
   }
 
   async embed(texts: string[]): Promise<number[][]> {
     const out: number[][] = [];
     const batch = 64;
     for (let i = 0; i < texts.length; i += batch) {
-      const res = await this.client.embeddings.create({ model: this.model, input: texts.slice(i, i + batch).map(clip) });
+      const input = texts.slice(i, i + batch).map(clip);
+      // Free tiers rate-limit embeddings per minute; waits can be long, so retry patiently.
+      const res = await withRetry(
+        () =>
+          this.client.embeddings.create({ model: this.model, input }).catch((err: unknown) => {
+            throw toProviderError('Embeddings', err);
+          }),
+        {
+          maxRetries: 6,
+          baseDelayMs: 2000,
+          maxDelayMs: 65_000,
+          sleep: this.sleep,
+          onRetry: (n, delay, err) => this.log(`embedding retry ${n}/6 in ${Math.round(delay / 1000)}s: ${err.message.split('\n')[0]}`),
+        },
+      );
       for (const d of [...res.data].sort((a, b) => a.index - b.index)) out.push(d.embedding);
     }
     return out;
@@ -111,18 +133,18 @@ export function createEmbedder(config: Config, log: (msg: string) => void, env =
     case 'openai': {
       const key = env[e.apiKeyEnv ?? 'OPENAI_API_KEY'];
       if (!key) throw new ConfigurationError('embeddings.provider "openai" needs OPENAI_API_KEY.');
-      return new ApiEmbedder(e.model ?? 'text-embedding-3-small', key, e.baseUrl);
+      return new ApiEmbedder(e.model ?? 'text-embedding-3-small', key, e.baseUrl, log);
     }
     case 'gemini': {
       const key = env[e.apiKeyEnv ?? 'GEMINI_API_KEY'];
       if (!key) throw new ConfigurationError('embeddings.provider "gemini" needs GEMINI_API_KEY.');
-      return new ApiEmbedder(e.model ?? 'gemini-embedding-001', key, e.baseUrl ?? GEMINI_OPENAI_BASE_URL);
+      return new ApiEmbedder(e.model ?? 'gemini-embedding-001', key, e.baseUrl ?? GEMINI_OPENAI_BASE_URL, log);
     }
     case 'openai-compatible': {
       if (!e.baseUrl || !e.model) {
         throw new ConfigurationError('embeddings.provider "openai-compatible" needs embeddings.baseUrl and embeddings.model.');
       }
-      return new ApiEmbedder(e.model, env[e.apiKeyEnv ?? 'SPECSYNC_API_KEY'] ?? 'none', e.baseUrl);
+      return new ApiEmbedder(e.model, env[e.apiKeyEnv ?? 'SPECSYNC_API_KEY'] ?? 'none', e.baseUrl, log);
     }
   }
 }

@@ -34,7 +34,9 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Pr
       }
       const backoff = Math.min(max, base * 2 ** attempt);
       const jittered = Math.round(backoff / 2 + random() * (backoff / 2));
-      const delay = Math.min(max * 2, Math.max(jittered, err.retryAfterMs ?? 0));
+      // A server-requested wait wins (plus a small margin), capped to avoid hanging forever.
+      const requested = err.retryAfterMs !== undefined ? err.retryAfterMs + 250 : 0;
+      const delay = Math.min(Math.max(max, 120_000), Math.max(jittered, requested));
       opts.onRetry?.(attempt + 1, delay, err);
       await sleep(delay);
     }

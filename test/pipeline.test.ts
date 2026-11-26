@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { runPipeline, isDryRunPlan, InputError } from '../src/pipeline.js';
+import { runPipeline, isDryRunPlan, InputError, displayPath } from '../src/pipeline.js';
 import { Cache } from '../src/cache/cache.js';
 import { ProviderError } from '../src/llm/provider.js';
 import { FatalProviderError, BudgetError } from '../src/agents/orchestrator.js';
@@ -123,5 +123,13 @@ describe('pipeline (golden, todo-api fixture)', () => {
     await expect(
       runPipeline({ config, baseDir: TODO_API, provider: truthProvider(), embedder: new FakeEmbedder(), cache: Cache.disabled() }),
     ).rejects.toThrow(/No spec given/);
+  });
+});
+
+describe('displayPath', () => {
+  it('is relative inside cwd, "." for cwd itself, absolute outside', () => {
+    expect(displayPath('/a/b', '/a/b')).toBe('.');
+    expect(displayPath('/a/b/c/d.md', '/a/b')).toBe('c/d.md');
+    expect(displayPath('/x/y', '/a/b')).toBe('/x/y');
   });
 });

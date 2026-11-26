@@ -1,0 +1,38 @@
+{
+  "description": "Labelled cases for measuring SpecSync's verdict accuracy. A label lists every verdict a careful reviewer could defend; a prediction counts as correct when it is in the list.",
+  "cases": [
+    {
+      "name": "todo-api",
+      "spec": "test/fixtures/todo-api/docs/spec.md",
+      "repo": "test/fixtures/todo-api",
+      "labels": {
+        "REQ-1": ["implemented"],
+        "REQ-2": ["implemented"],
+        "REQ-3": ["implemented"],
+        "REQ-4": ["implemented"],
+        "REQ-5": ["partial"],
+        "REQ-6": ["implemented"],
+        "REQ-7": ["missing"],
+        "REQ-8": ["missing"],
+        "REQ-9": ["not-verifiable"]
+      }
+    },
+    {
+      "name": "express-lib",
+      "spec": "demo/spec.md",
+      "repo": "demo/target-repo/lib",
+      "setup": "git clone --depth 1 https://github.com/expressjs/express demo/target-repo",
+      "notes": "Express 5 delegates route matching to the separate `router` package and body parsing to `body-parser`, so several sections are only partly implemented inside lib/.",
+      "labels": {
+        "basic-request-routing": ["partial"],
+        "middleware-pipeline": ["partial"],
+        "request-body-parsing": ["partial", "missing"],
+        "response-methods": ["implemented"],
+        "trust-proxy-configuration": ["implemented"],
+        "strict-mode-routing": ["implemented", "partial"],
+        "request-body-size-limit-enforcement": ["missing", "partial"],
+        "rate-limiting-middleware": ["missing"]
+      }
+    }
+  ]
+}

@@ -1,5 +1,4 @@
 import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
 import { join } from 'path';
 import { glob } from 'glob';
 import ignore from 'ignore';
@@ -24,7 +23,7 @@ export interface FileListOptions {
  * List source files under `repoDir`, as repo-relative POSIX paths, sorted.
  * Exclusions are matched relative to the repo root, so a repo that itself
  * lives under a folder named "build" or "dist" is still analyzed.
- * Root .gitignore and .specsyncignore files are honored.
+ * .gitignore and .specsyncignore files are honored at every directory level.
  */
 export async function listSourceFiles(repoDir: string, opts: FileListOptions = {}): Promise<string[]> {
   const include = opts.include?.length
@@ -42,12 +41,45 @@ export async function listSourceFiles(repoDir: string, opts: FileListOptions = {
     follow: false,
   });
 
-  const ig = ignore();
-  for (const name of ['.gitignore', '.specsyncignore']) {
-    const p = join(repoDir, name);
-    if (existsSync(p)) ig.add(await readFile(p, 'utf-8'));
-  }
+  const matchers = await loadIgnoreFiles(repoDir, exclude);
   return [...new Set(files.map((f) => f.replace(/\\/g, '/').replace(/^\.\//, '')))]
-    .filter((f) => !ig.ignores(f))
+    .filter((f) => !isIgnored(f, matchers))
     .sort();
+}
+
+interface IgnoreScope {
+  /** Directory (repo-relative, '' for root) the patterns apply under. */
+  dir: string;
+  ig: ReturnType<typeof ignore>;
+}
+
+/** Collect .gitignore and .specsyncignore files at every level of the repo. */
+async function loadIgnoreFiles(repoDir: string, exclude: string[]): Promise<IgnoreScope[]> {
+  const found = await glob(['**/.gitignore', '**/.specsyncignore'], {
+    cwd: repoDir,
+    ignore: exclude,
+    dot: true,
+    nodir: true,
+    posix: true,
+  });
+  const byDir = new Map<string, ReturnType<typeof ignore>>();
+  for (const rel of found.sort()) {
+    const dir = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '';
+    const ig = byDir.get(dir) ?? ignore();
+    ig.add(await readFile(join(repoDir, rel), 'utf-8'));
+    byDir.set(dir, ig);
+  }
+  return [...byDir.entries()].map(([dir, ig]) => ({ dir, ig }));
+}
+
+/** A file is ignored when any ignore file in one of its ancestor directories matches it. */
+function isIgnored(file: string, scopes: IgnoreScope[]): boolean {
+  for (const { dir, ig } of scopes) {
+    if (dir === '') {
+      if (ig.ignores(file)) return true;
+    } else if (file.startsWith(`${dir}/`) && ig.ignores(file.slice(dir.length + 1))) {
+      return true;
+    }
+  }
+  return false;
 }

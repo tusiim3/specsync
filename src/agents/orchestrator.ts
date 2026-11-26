@@ -3,6 +3,7 @@ import type { Cache } from '../cache/cache.js';
 import type { LLMProvider } from '../llm/provider.js';
 import { ProviderError } from '../llm/provider.js';
 import { withRetry } from '../llm/retry.js';
+import { RateGate } from '../llm/rate-gate.js';
 import type { HybridRetriever, Query } from '../search/retrieval.js';
 import type { Requirement, RequirementResult } from '../types.js';
 import {
@@ -20,6 +21,7 @@ export interface AnalyzeOptions {
   maxCandidateTokens: number;
   concurrency: number;
   maxRetries: number;
+  requestsPerMinute?: number;
   /** Abort before any call if the uncached work exceeds these. */
   budget?: { maxLlmCalls?: number; maxInputTokens?: number };
   dryRun?: boolean;
@@ -125,6 +127,7 @@ export async function analyzeRequirements(
   }
 
   const limit = pLimit(opts.concurrency);
+  const gate = new RateGate(opts.requestsPerMinute, Date.now, opts.sleep);
   let fatal: FatalProviderError | null = null;
   const totals = { llmCalls: 0, inputTokens: 0, outputTokens: 0 };
   const width = String(plan.length).length;
@@ -143,7 +146,7 @@ export async function analyzeRequirements(
           return errorResult(req.id, 'skipped after a fatal provider error');
         }
         try {
-          const result = await judge(p, provider, opts, totals, log);
+          const result = await judge(p, provider, opts, gate, totals, log);
           cache.setVerdict(p.cacheKey, result);
           log(`${tag()} ${symbolFor(result.verdict)} ${result.verdict.padEnd(14)} ${req.heading}`);
           return { ...result, cached: false };
@@ -151,7 +154,7 @@ export async function analyzeRequirements(
           if (err instanceof ProviderError && err.fatal) {
             fatal ??= new FatalProviderError(err.message, err);
           }
-          const msg = err instanceof Error ? err.message : String(err);
+          const msg = firstLine(err instanceof Error ? err.message : String(err), 300);
           log(`${tag()} ! error          ${req.heading}: ${msg}`);
           return errorResult(req.id, msg);
         }
@@ -167,13 +170,15 @@ async function judge(
   p: PlannedCall,
   provider: LLMProvider,
   opts: AnalyzeOptions,
+  gate: RateGate,
   totals: { llmCalls: number; inputTokens: number; outputTokens: number },
   log: (msg: string) => void,
 ): Promise<Omit<RequirementResult, 'cached'>> {
   // One extra attempt if the reply is not valid against the schema.
   for (let attempt = 0; ; attempt++) {
     const res = await withRetry(
-      () => {
+      async () => {
+        await gate.wait();
         totals.llmCalls++;
         return provider.complete({
           system: SYSTEM_PROMPT,
@@ -185,8 +190,10 @@ async function judge(
       {
         maxRetries: opts.maxRetries,
         sleep: opts.sleep,
-        onRetry: (n, delay, err) =>
-          log(`      retry ${n}/${opts.maxRetries} for "${p.requirement.heading}" in ${Math.round(delay / 1000)}s: ${err.message}`),
+        onRetry: (n, delay, err) => {
+          if (err.status === 429) gate.pause(delay);
+          log(`      retry ${n}/${opts.maxRetries} for "${p.requirement.heading}" in ${Math.round(delay / 1000)}s: ${firstLine(err.message)}`);
+        },
       },
     );
     totals.inputTokens += res.inputTokens;
@@ -199,6 +206,12 @@ async function judge(
       }
     }
   }
+}
+
+/** Provider messages can embed whole JSON payloads; keep logs to one readable line. */
+export function firstLine(msg: string, max = 160): string {
+  const line = msg.split(/\r?\n|\\n/)[0]!.trim();
+  return line.length > max ? `${line.slice(0, max)}…` : line;
 }
 
 function errorResult(requirementId: string, error: string): RequirementResult {

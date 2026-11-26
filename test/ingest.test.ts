@@ -122,6 +122,14 @@ describe('listSourceFiles', () => {
       expect(await listSourceFiles(repo)).toEqual(['src/a.ts']);
       expect(await listSourceFiles(repo, { excludeTests: false })).toEqual(['src/a.test.ts', 'src/a.ts']);
       expect(await listSourceFiles(repo, { exclude: ['src/a.ts'] })).toEqual([]);
+
+      // Nested ignore files apply relative to their own directory.
+      await mkdir(join(repo, 'pkg', 'gen'), { recursive: true });
+      await writeFile(join(repo, 'pkg', 'keep.ts'), 'x');
+      await writeFile(join(repo, 'pkg', 'gen', 'out.ts'), 'x');
+      await writeFile(join(repo, 'pkg', '.gitignore'), 'gen/\n');
+      await writeFile(join(repo, '.specsyncignore'), 'pkg/keep.ts\n');
+      expect(await listSourceFiles(repo)).toEqual(['src/a.ts']);
     });
   });
 });

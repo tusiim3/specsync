@@ -6,7 +6,7 @@ import { glob } from 'glob';
 import { loadDotenv } from './env.js';
 import { ConfigError, loadConfig, PROVIDER_NAMES, type Config, type ConfigInput } from './config.js';
 import { resolveProvider } from './llm/resolver.js';
-import { ConfigurationError, type LLMProvider } from './llm/provider.js';
+import { ConfigurationError, ProviderError, type LLMProvider } from './llm/provider.js';
 import { BudgetError, FatalProviderError } from './agents/orchestrator.js';
 import { InputError, isDryRunPlan, runPipeline, validateInputs } from './pipeline.js';
 import { renderText } from './report/text.js';
@@ -36,6 +36,7 @@ interface RunFlags {
   md?: string;
   json?: string;
   sarif?: string;
+  commentMd?: string;
   cache: boolean;
   cacheDir?: string;
   history: boolean;
@@ -70,6 +71,7 @@ function addRunOptions(cmd: Command): Command {
     .option('--md <file>', 'write a Markdown report')
     .option('--json <file>', 'write the JSON report')
     .option('--sarif <file>', 'write a SARIF report for code scanning')
+    .option('--comment-md <file>', 'write a compact Markdown summary for a PR comment')
     .option('--link-base <url>', 'link evidence in Markdown, e.g. https://github.com/o/r/blob/<sha>/')
     .option('--baseline <file>', 'JSON report to compare against (default: previous run in history)')
     .option('--no-cache', 'ignore and do not write the local cache')
@@ -184,6 +186,7 @@ async function emitOutputs(report: DriftReport, diff: ReportDiff | undefined, fl
   if (md) await writeOut(md, renderMarkdown(report, diff, mdOpts));
   if (flags.json) await writeOut(flags.json, JSON.stringify(report, null, 2));
   if (flags.sarif) await writeOut(flags.sarif, renderSarif(report));
+  if (flags.commentMd) await writeOut(flags.commentMd, renderMarkdown(report, diff, { ...mdOpts, compact: true }));
 }
 
 /** Apply CI thresholds; returns the exit code. */
@@ -352,7 +355,8 @@ export async function main(argv = process.argv): Promise<void> {
       err instanceof ConfigError ||
       err instanceof InputError ||
       err instanceof BudgetError ||
-      err instanceof FatalProviderError;
+      err instanceof FatalProviderError ||
+      err instanceof ProviderError;
     process.stderr.write(`\nspecsync: ${(err as Error).message}\n`);
     if (!known || process.env['DEBUG']) process.stderr.write(`${(err as Error).stack ?? ''}\n`);
     process.exitCode = EXIT.error;
