@@ -25,7 +25,7 @@ inputs:
     description: Fail when spec coverage is below this (0-100).
     required: false
   fail-on:
-    description: Comma list of conditions that fail the check: missing, partial, error, regression.
+    description: "Comma list of conditions that fail the check (missing, partial, error, regression)."
     required: false
     default: error,regression
   compare-base:

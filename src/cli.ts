@@ -44,6 +44,7 @@ interface RunFlags {
   linkBase?: string;
   dryRun?: boolean;
   quiet?: boolean;
+  verbose?: boolean;
   minScore?: number;
   failOn?: string[];
 }
@@ -78,7 +79,8 @@ function addRunOptions(cmd: Command): Command {
     .option('--cache-dir <dir>', 'cache directory (default: .specsync/cache)')
     .option('--no-history', 'do not record this run in .specsync/history.json')
     .option('--dry-run', 'show what would run (calls, tokens) without calling the LLM')
-    .option('-q, --quiet', 'no progress output');
+    .option('-q, --quiet', 'no progress output')
+    .option('-v, --verbose', 'show notes and evidence for every requirement in text output');
 }
 
 function overridesFrom(flags: RunFlags): Partial<ConfigInput> {
@@ -180,7 +182,9 @@ async function emitOutputs(report: DriftReport, diff: ReportDiff | undefined, fl
       process.stdout.write(`${renderSarif(report)}\n`);
       break;
     default:
-      process.stdout.write(renderText(report, diff, { color: useColor() }));
+      process.stdout.write(
+        renderText(report, diff, { color: useColor(), verbose: flags.verbose, width: process.stdout.columns || 100 }),
+      );
   }
   const md = flags.md ?? flags.out;
   if (md) await writeOut(md, renderMarkdown(report, diff, mdOpts));

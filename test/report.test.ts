@@ -3,7 +3,7 @@ import { computeScore, countVerdicts, findSurplus, generateReport } from '../src
 import { diffReports, hasChanges } from '../src/report/diff.js';
 import { renderMarkdown, COMMENT_MARKER } from '../src/report/markdown.js';
 import { renderSarif } from '../src/report/sarif.js';
-import { renderText, scoreBar } from '../src/report/text.js';
+import { renderText, scoreBar, wrap } from '../src/report/text.js';
 import { appendRun, previousRun, readHistory } from '../src/store/history.js';
 import { evaluateThresholds, EXIT } from '../src/cli.js';
 import type { CodeChunk, DriftReport, Requirement, RequirementResult, Verdict } from '../src/types.js';
@@ -106,6 +106,11 @@ describe('renderers', () => {
     expect(t).not.toMatch(/\x1b\[/);
     expect(renderText(r, undefined, { color: true })).toMatch(/\x1b\[/);
     expect(scoreBar(50, 10)).toBe('█████░░░░░');
+    // Implemented rows are one line unless verbose.
+    expect(t).not.toContain('note a');
+    expect(renderText(r, undefined, { verbose: true })).toContain('note a');
+    expect(wrap('aaa bbb ccc ddd', 40, '  ')).toEqual(['  aaa bbb ccc ddd']);
+    expect(wrap('word '.repeat(20).trim(), 40, '    ').every((l) => l.startsWith('    ') && l.length <= 40)).toBe(true);
   });
 
   it('markdown: headline, links when a link base is given, compact comment marker', () => {

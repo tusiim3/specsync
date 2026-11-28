@@ -5,6 +5,25 @@ export interface TextOptions {
   color?: boolean;
   /** Width of the score bar. */
   barWidth?: number;
+  /** Show notes and all evidence for every requirement, not just the ones needing attention. */
+  verbose?: boolean;
+  /** Wrap notes to this many columns. */
+  width?: number;
+}
+
+/** Word-wrap `text` to `width` columns, prefixing every line with `indent`. */
+export function wrap(text: string, width: number, indent: string): string[] {
+  const max = Math.max(30, width - indent.length);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (line && line.length + 1 + word.length > max) {
+      lines.push(indent + line);
+      line = word;
+    } else line = line ? `${line} ${word}` : word;
+  }
+  if (line) lines.push(indent + line);
+  return lines;
 }
 
 function palette(color: boolean) {
@@ -66,22 +85,32 @@ export function renderText(report: DriftReport, diff?: ReportDiff, opts: TextOpt
     for (const c of diff.improvements) out.push(`  ${p.green('▲')} ${c.requirement.heading} ${p.dim(`${c.from} → ${c.to}`)}`);
   }
 
+  const width = opts.width ?? 100;
   const section = (title: string, verdict: RequirementResult['verdict'], icon: string, color: (s: string) => string) => {
     const rows = report.results.filter((r) => r.verdict === verdict);
     if (!rows.length) return;
+    // Implemented and not-verifiable rows are one line each unless verbose: the report is for spotting gaps.
+    const compact = !opts.verbose && (verdict === 'implemented' || verdict === 'not-verifiable');
     out.push('');
     out.push(`  ${p.bold(color(title))}`);
     for (const r of rows) {
       const req = reqs.get(r.requirementId);
       const heading = req?.heading ?? r.requirementId;
+      if (compact) {
+        const e = r.evidence[0];
+        const where = e ? `${p.cyan(`${e.filePath}:${e.startLine}`)}${e.symbol ? p.dim(` ${e.symbol}`) : ''}` : p.gray(req ? location(req) : '');
+        out.push(`  ${color(icon)} ${heading}  ${where}`);
+        continue;
+      }
       const conf = r.verdict === 'error' ? '' : p.dim(` ${Math.round(r.confidence * 100)}%`);
       out.push(`  ${color(icon)} ${heading}${conf}  ${p.gray(req ? location(req) : '')}`);
       const note = r.verdict === 'error' ? r.error ?? '' : r.notes;
-      if (note) out.push(`      ${p.dim(note)}`);
-      for (const e of r.evidence.slice(0, 3)) {
+      for (const l of wrap(note, width, '      ')) out.push(p.dim(l));
+      const shown = opts.verbose ? r.evidence : r.evidence.slice(0, 3);
+      for (const e of shown) {
         out.push(`      ${p.cyan(`${e.filePath}:${e.startLine}-${e.endLine}`)}${e.symbol ? p.dim(` ${e.symbol}`) : ''}`);
       }
-      if (r.evidence.length > 3) out.push(`      ${p.dim(`+${r.evidence.length - 3} more`)}`);
+      if (r.evidence.length > shown.length) out.push(`      ${p.dim(`+${r.evidence.length - shown.length} more`)}`);
     }
   };
 
