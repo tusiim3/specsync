@@ -279,7 +279,7 @@ async function init(opts: { force?: boolean; spec?: string; repo?: string }) {
     await appendFile(gi, `${current && !current.endsWith('\n') ? '\n' : ''}${line}\n`);
     process.stdout.write('Added .specsync/ (cache and history) to .gitignore.\n');
   }
-  process.stdout.write('Next: set GEMINI_API_KEY (or ANTHROPIC_API_KEY / OPENAI_API_KEY) and run: npx specsync run\n');
+  process.stdout.write('Next: set GEMINI_API_KEY (or ANTHROPIC_API_KEY / OPENAI_API_KEY) and run: npx @tusiim3/specsync run\n');
   return EXIT.ok;
 }
 

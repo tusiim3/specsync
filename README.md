@@ -13,7 +13,7 @@
 **SpecSync reads your spec or PRD, finds the code behind every requirement, and tells you which ones are implemented, which are half done, and which nothing implements.** Run it locally or on every pull request, where it comments what a change broke.
 
 ```bash
-npx specsync run --spec docs/spec.md --repo src
+npx @tusiim3/specsync run --spec docs/spec.md --repo src
 ```
 
 <img alt="SpecSync terminal report: coverage 69/100, with missing, partial and implemented requirements and the code that implements each" src=".github/assets/terminal.png" width="100%">
@@ -42,7 +42,7 @@ npx specsync run --spec docs/spec.md --repo src
 2. Create a config in your project (optional, but makes every later command short):
 
    ```bash
-   npx specsync init
+   npx @tusiim3/specsync init
    ```
 
    This writes `specsync.config.json` pointing at your spec and code, and adds `.specsync/` (cache and history) to `.gitignore`.
@@ -50,7 +50,7 @@ npx specsync run --spec docs/spec.md --repo src
 3. Run it:
 
    ```bash
-   npx specsync run
+   npx @tusiim3/specsync run
    ```
 
 You get the report in the terminal. Add `--md report.md`, `--json report.json` or `--sarif specsync.sarif` to also write files. The next run reuses cached verdicts and only re-checks requirements whose text or code changed.
@@ -58,10 +58,10 @@ You get the report in the terminal. Add `--md report.md`, `--json report.json` o
 To see what a run would cost before it makes any calls:
 
 ```bash
-npx specsync run --dry-run
+npx @tusiim3/specsync run --dry-run
 ```
 
-> Not published to npm yet? Run from a clone: `npm ci && npm run build && node dist/bin.js run ...`
+> To pin a version in a project, install it as a dev dependency: `npm install -D @tusiim3/specsync`, then run `npx specsync ...`.
 
 ## On every pull request
 
@@ -209,7 +209,7 @@ Paths on the command line are relative to where you run it; paths in a config fi
 
 ## Configuration
 
-`specsync.config.json` (or `.specsyncrc.json`). Every field is optional; add `"$schema": "./node_modules/specsync/schema/specsync.schema.json"` for editor autocomplete.
+`specsync.config.json` (or `.specsyncrc.json`). Every field is optional; add `"$schema": "./node_modules/@tusiim3/specsync/schema/specsync.schema.json"` for editor autocomplete.
 
 ```jsonc
 {
