@@ -311,6 +311,10 @@ npm run eval:retrieval -- --embeddings local   # retrieval only, no LLM calls
 
 `test/fixtures/todo-api` is a small TypeScript, Python and Go app with a spec and known answers; the golden test runs the whole pipeline on it. `scripts/render-assets.mjs` regenerates the README images from `.github/assets/src`, the terminal image from a real report.
 
+### Releasing
+
+Bump `version` in `package.json` on master, then on GitHub open **Releases → Draft a new release**, create the tag `v<version>` targeting `master`, and publish. The release workflow checks the tag matches `package.json`, runs the checks, publishes to npm (with the `NPM_TOKEN` secret) and moves the major tag (`v1`) so the Action's `@v1` users get the update.
+
 ## License
 
 [Apache 2.0](LICENSE).
