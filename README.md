@@ -6,7 +6,7 @@
 <p>
   <a href="https://github.com/tusiim3/specsync/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/tusiim3/specsync/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-0A8F7A"></a>
-  <img alt="Node 20+" src="https://img.shields.io/badge/node-%E2%89%A520-142033">
+  <img alt="Node 22.13+" src="https://img.shields.io/badge/node-%E2%89%A522.13-142033">
   <img alt="Gemini, Claude, OpenAI, Ollama" src="https://img.shields.io/badge/models-Gemini%20%C2%B7%20Claude%20%C2%B7%20OpenAI%20%C2%B7%20Ollama-5E6B82">
 </p>
 

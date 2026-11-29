@@ -17,6 +17,7 @@ First release meant for real projects.
 - Test suite, eval harness, CI.
 
 ### Changed
+- Requires Node.js 22.13 or newer (Node 20 is end-of-life, and the PDF reader needs 22.13+).
 - License is now Apache 2.0.
 - The score counts partial as half and leaves out not-verifiable and failed requirements.
 - History moved from `drift-map.json` to `.specsync/history.json`.
