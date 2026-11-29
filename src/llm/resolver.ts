@@ -7,8 +7,8 @@ export const GEMINI_OPENAI_BASE_URL = 'https://generativelanguage.googleapis.com
 export const DEFAULT_MODELS = {
   gemini: 'gemini-3.5-flash-lite',
   anthropic: DEFAULT_ANTHROPIC_MODEL,
-  openai: 'gpt-5-mini',
-  ollama: 'llama3.1',
+  openai: 'gpt-5.4-mini',
+  ollama: 'qwen3:8b',
 } as const;
 
 type Env = Record<string, string | undefined>;

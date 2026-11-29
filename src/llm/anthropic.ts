@@ -8,7 +8,8 @@ import {
   type LLMProvider,
 } from './provider.js';
 
-export const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5-5';
+/** Cheapest current Claude; judging one requirement at a time does not need a frontier model. */
+export const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-5-5';
 
 /** Models that accept server-side refusal fallbacks (`fallbacks: "default"`). */
 const FALLBACK_MODELS = new Set([

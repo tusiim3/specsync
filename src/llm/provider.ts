@@ -90,7 +90,7 @@ export class ConfigurationError extends Error {
           '  OPENAI_API_KEY      https://platform.openai.com',
           '',
           'Or run a local model with Ollama (https://ollama.com):',
-          '  ollama serve && ollama pull llama3.1',
+          '  ollama serve && ollama pull qwen3:8b',
           '',
           'Then re-run, or pick one explicitly with --provider.',
         ].join('\n'),

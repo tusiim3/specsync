@@ -144,3 +144,12 @@ be set per run.
 ### SS-20: Documentation
 
 Every CLI flag and config option is documented in the README.
+
+### SS-21: Embedding choice
+
+Users choose where embeddings run: a local model downloaded automatically on
+first use, the Gemini or OpenAI embedding API, or any OpenAI-compatible endpoint,
+from the config file or `--embeddings`. In the default `auto` mode the local model
+is used, and if it cannot be loaded SpecSync switches to an embedding API for
+which a key is set, before any vectors are produced, so one run never mixes
+vectors from two models.

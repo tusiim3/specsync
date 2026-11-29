@@ -8,7 +8,7 @@ export const CONFIG_FILENAMES = ['specsync.config.json', '.specsyncrc.json'];
 export const PROVIDER_NAMES = ['auto', 'gemini', 'anthropic', 'openai', 'ollama', 'openai-compatible'] as const;
 export type ProviderName = (typeof PROVIDER_NAMES)[number];
 
-export const EMBEDDING_PROVIDERS = ['local', 'openai', 'gemini', 'openai-compatible'] as const;
+export const EMBEDDING_PROVIDERS = ['auto', 'local', 'openai', 'gemini', 'openai-compatible'] as const;
 
 /** Sections whose headings match these patterns are not treated as requirements. */
 export const DEFAULT_IGNORE_SECTIONS = [
@@ -57,12 +57,13 @@ const ProviderSchema = z
 
 const EmbeddingsSchema = z
   .object({
-    provider: z.enum(EMBEDDING_PROVIDERS).default('local'),
+    /** auto: local model, falling back to Gemini/OpenAI embeddings if it cannot be downloaded. */
+    provider: z.enum(EMBEDDING_PROVIDERS).default('auto'),
     model: z.string().optional(),
     baseUrl: z.string().optional(),
     apiKeyEnv: z.string().optional(),
   })
-  .default({ provider: 'local' });
+  .default({ provider: 'auto' });
 
 export const ConfigSchema = z.object({
   /** One or more spec documents (.md, .markdown, .txt, .docx, .pdf, .html). */

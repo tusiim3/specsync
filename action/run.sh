@@ -16,6 +16,7 @@ fi
 [[ -n "${INPUT_REPO:-}" ]] && args+=(--repo "$INPUT_REPO")
 [[ -n "${INPUT_PROVIDER:-}" ]] && args+=(--provider "$INPUT_PROVIDER")
 [[ -n "${INPUT_MODEL:-}" ]] && args+=(--model "$INPUT_MODEL")
+[[ -n "${INPUT_EMBEDDINGS:-}" ]] && args+=(--embeddings "$INPUT_EMBEDDINGS")
 
 check_args=()
 [[ -n "${INPUT_MIN_SCORE:-}" ]] && check_args+=(--min-score "$INPUT_MIN_SCORE")

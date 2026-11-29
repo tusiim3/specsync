@@ -24,3 +24,6 @@ Thumbs.db
 .idea/
 *.tsbuildinfo
 .github/assets/src/terminal.out.html
+
+# Private notes, kept out of the public repo
+DECISIONS.md

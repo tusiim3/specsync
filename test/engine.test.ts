@@ -223,3 +223,33 @@ describe('RateGate', () => {
     expect(waits).toEqual([]);
   });
 });
+
+describe('FallbackEmbedder and createEmbedder', () => {
+  it('uses the primary when it loads, otherwise switches before embedding', async () => {
+    const { FallbackEmbedder } = await import('../src/embed/embedder.js');
+    const ok = { id: 'local:x', prepare: async () => {}, embed: async (t: string[]) => t.map(() => [1]) };
+    const broken = { id: 'local:x', prepare: async () => { throw new Error('download blocked'); }, embed: async () => [] };
+    const api = { id: 'api:gemini', embed: async (t: string[]) => t.map(() => [2]) };
+    const logs: string[] = [];
+
+    const a = new FallbackEmbedder(ok, () => api, (m) => logs.push(m));
+    expect(await a.embed(['q'])).toEqual([[1]]);
+    expect(a.id).toBe('local:x');
+
+    const b = new FallbackEmbedder(broken, () => api, (m) => logs.push(m));
+    expect(await b.embed(['q'])).toEqual([[2]]);
+    expect(b.id).toBe('api:gemini');
+    expect(logs.join()).toMatch(/download blocked/);
+
+    const c = new FallbackEmbedder(broken, undefined, () => {});
+    await expect(c.embed(['q'])).rejects.toThrow(/--embeddings gemini/);
+  });
+
+  it('builds the configured embedder and requires keys for API providers', async () => {
+    const { createEmbedder } = await import('../src/embed/embedder.js');
+    const { testConfig } = await import('./helpers.js');
+    expect(createEmbedder(testConfig(), () => {}, {}).id).toBe('local:Xenova/bge-small-en-v1.5');
+    expect(createEmbedder(testConfig({ embeddings: { provider: 'gemini' } }), () => {}, { GEMINI_API_KEY: 'k' }).id).toMatch(/gemini-embedding-001/);
+    expect(() => createEmbedder(testConfig({ embeddings: { provider: 'openai' } }), () => {}, {})).toThrow(/OPENAI_API_KEY/);
+  });
+});

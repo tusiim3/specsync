@@ -153,7 +153,7 @@ describe('resolveProvider', () => {
     expect((await resolveProvider(cfg, { ...noOllama, GEMINI_API_KEY: 'g', OPENAI_API_KEY: 'o' })).name).toBe('Gemini');
     expect((await resolveProvider(cfg, { ...noOllama, ANTHROPIC_API_KEY: 'a', OPENAI_API_KEY: 'o' })).name).toBe('Anthropic');
     const openai = await resolveProvider(cfg, { ...noOllama, OPENAI_API_KEY: 'o' });
-    expect([openai.name, openai.model]).toEqual(['OpenAI', 'gpt-5-mini']);
+    expect([openai.name, openai.model]).toEqual(['OpenAI', 'gpt-5.4-mini']);
   });
 
   it('throws a helpful error when nothing is configured', async () => {

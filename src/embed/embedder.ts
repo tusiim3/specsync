@@ -10,13 +10,16 @@ export interface Embedder {
   /** Identifies model + settings; part of the embedding cache key. */
   readonly id: string;
   embed(texts: string[]): Promise<number[][]>;
+  /** Load or select the model before any vectors are made (optional). */
+  prepare?(): Promise<void>;
 }
 
 /** Truncate long inputs: small embedding models only read the first few hundred tokens anyway. */
 const MAX_EMBED_CHARS = 2000;
 const clip = (t: string) => (t.length > MAX_EMBED_CHARS ? t.slice(0, MAX_EMBED_CHARS) : t);
 
-export const DEFAULT_LOCAL_MODEL = 'Xenova/all-MiniLM-L6-v2';
+/** Small (~35 MB quantized) and the best local model in our retrieval benchmark (eval/retrieval.ts). */
+export const DEFAULT_LOCAL_MODEL = 'Xenova/bge-small-en-v1.5';
 
 /** Runs a small sentence-transformer locally via transformers.js. No API key, works offline after first download. */
 export class LocalEmbedder implements Embedder {
@@ -36,12 +39,21 @@ export class LocalEmbedder implements Embedder {
         const t = await import('@huggingface/transformers');
         const cacheDir = process.env['SPECSYNC_MODEL_CACHE'];
         if (cacheDir) t.env.cacheDir = cacheDir;
-        this.log(`Loading embedding model ${this.model} (downloads ~25MB on first run)...`);
+        this.log(`Loading embedding model ${this.model} (one-time download, ~35 MB)...`);
         const p = await t.pipeline('feature-extraction', this.model, { dtype: 'q8' });
         return p as unknown as (texts: string[], opts: object) => Promise<{ data: Float32Array }>;
       })();
     }
     return this.pipe;
+  }
+
+  async prepare(): Promise<void> {
+    try {
+      await this.load();
+    } catch (err) {
+      this.pipe = null; // allow a later retry
+      throw err;
+    }
   }
 
   async embed(texts: string[]): Promise<number[][]> {
@@ -102,11 +114,16 @@ export class ApiEmbedder implements Embedder {
 
 /** Wraps an embedder with the on-disk cache so unchanged code is never re-embedded. */
 export class CachedEmbedder implements Embedder {
-  readonly id: string;
   hits = 0;
 
-  constructor(private readonly inner: Embedder, private readonly cache: Cache) {
-    this.id = inner.id;
+  constructor(private readonly inner: Embedder, private readonly cache: Cache) {}
+
+  get id(): string {
+    return this.inner.id;
+  }
+
+  async prepare(): Promise<void> {
+    await this.inner.prepare?.();
   }
 
   async embed(texts: string[]): Promise<number[][]> {
@@ -125,20 +142,86 @@ export class CachedEmbedder implements Embedder {
   }
 }
 
+/**
+ * Tries the primary embedder (the local model) and, if it cannot load,
+ * switches to an API embedder before any vectors are produced, so one run
+ * never mixes vectors from two models.
+ */
+export class FallbackEmbedder implements Embedder {
+  private active: Embedder;
+  private prepared = false;
+
+  constructor(
+    private readonly primary: Embedder,
+    private readonly fallback: (() => Embedder) | undefined,
+    private readonly log: (msg: string) => void,
+  ) {
+    this.active = primary;
+  }
+
+  get id(): string {
+    return this.active.id;
+  }
+
+  async prepare(): Promise<void> {
+    if (this.prepared) return;
+    try {
+      await this.primary.prepare?.();
+    } catch (err) {
+      const reason = (err as Error).message.split('\n')[0];
+      if (!this.fallback) {
+        throw new ConfigurationError(
+          [
+            `Could not load the local embedding model (${reason}).`,
+            'It downloads once from huggingface.co. If that is blocked, use API embeddings instead:',
+            '  --embeddings gemini   (needs GEMINI_API_KEY)',
+            '  --embeddings openai   (needs OPENAI_API_KEY)',
+          ].join('\n'),
+        );
+      }
+      this.active = this.fallback();
+      this.log(`Local embedding model unavailable (${reason}); using ${this.active.id} instead.`);
+    }
+    this.prepared = true;
+  }
+
+  async embed(texts: string[]): Promise<number[][]> {
+    await this.prepare();
+    return this.active.embed(texts);
+  }
+}
+
+export const DEFAULT_EMBEDDING_MODELS = {
+  local: DEFAULT_LOCAL_MODEL,
+  openai: 'text-embedding-3-small',
+  gemini: 'gemini-embedding-001',
+} as const;
+
 export function createEmbedder(config: Config, log: (msg: string) => void, env = process.env): Embedder {
   const e = config.embeddings;
+  const gemini = (key: string, model?: string) =>
+    new ApiEmbedder(model ?? DEFAULT_EMBEDDING_MODELS.gemini, key, e.baseUrl ?? GEMINI_OPENAI_BASE_URL, log);
+  const openai = (key: string, model?: string) =>
+    new ApiEmbedder(model ?? DEFAULT_EMBEDDING_MODELS.openai, key, e.baseUrl, log);
+
   switch (e.provider) {
+    case 'auto': {
+      const geminiKey = env['GEMINI_API_KEY'];
+      const openaiKey = env['OPENAI_API_KEY'];
+      const fallback = geminiKey ? () => gemini(geminiKey) : openaiKey ? () => openai(openaiKey) : undefined;
+      return new FallbackEmbedder(new LocalEmbedder(e.model ?? DEFAULT_LOCAL_MODEL, log), fallback, log);
+    }
     case 'local':
       return new LocalEmbedder(e.model ?? DEFAULT_LOCAL_MODEL, log);
     case 'openai': {
       const key = env[e.apiKeyEnv ?? 'OPENAI_API_KEY'];
       if (!key) throw new ConfigurationError('embeddings.provider "openai" needs OPENAI_API_KEY.');
-      return new ApiEmbedder(e.model ?? 'text-embedding-3-small', key, e.baseUrl, log);
+      return openai(key, e.model);
     }
     case 'gemini': {
       const key = env[e.apiKeyEnv ?? 'GEMINI_API_KEY'];
       if (!key) throw new ConfigurationError('embeddings.provider "gemini" needs GEMINI_API_KEY.');
-      return new ApiEmbedder(e.model ?? 'gemini-embedding-001', key, e.baseUrl ?? GEMINI_OPENAI_BASE_URL, log);
+      return gemini(key, e.model);
     }
     case 'openai-compatible': {
       if (!e.baseUrl || !e.model) {

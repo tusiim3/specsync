@@ -29,7 +29,7 @@ npx specsync run --spec docs/spec.md --repo src
 
 ## Contents
 
-[Quick start](#quick-start) · [Pull requests](#on-every-pull-request) · [How it works](#how-it-works) · [Verdicts and score](#verdicts-and-the-score) · [Accuracy](#accuracy) · [CLI](#cli-reference) · [Configuration](#configuration) · [Providers](#providers-and-privacy) · [Compared with](#how-it-compares) · [Limits](#limits) · [Development](#development)
+[Quick start](#quick-start) · [Pull requests](#on-every-pull-request) · [How it works](#how-it-works) · [Verdicts and score](#verdicts-and-the-score) · [Accuracy](#accuracy) · [CLI](#cli-reference) · [Configuration](#configuration) · [Providers](#providers-and-privacy) · [Embeddings](#embeddings) · [Compared with](#how-it-compares) · [Limits](#limits) · [Development](#development)
 
 ## Quick start
 
@@ -104,6 +104,7 @@ It also writes the full report to the job summary, and with `sarif: specsync.sar
 | `repo` | from config | Code directory |
 | `config` | auto | Path to `specsync.config.json` |
 | `provider`, `model` | auto | LLM provider and model; keys come from `env` |
+| `embeddings` | `auto` | Where embeddings run; the local model is cached between runs |
 | `min-score` | none | Fail below this coverage (0 to 100) |
 | `fail-on` | `error,regression` | Any of `missing`, `partial`, `error`, `regression` |
 | `compare-base` | `true` | Also analyze the base commit and report the delta |
@@ -156,11 +157,12 @@ Cost scales with the number of requirements, not the size of the codebase: one c
 
 `npm run eval` scores SpecSync against hand-labelled requirements ([`eval/cases.json`](eval/cases.json)): a multi-language fixture app and Express 5's `lib/` against an Express spec. Where a careful reviewer could defend more than one verdict, both count.
 
-| Model | Verdict accuracy | Gap precision | Gap recall |
-|---|---|---|---|
-| Gemini 3.5 Flash-Lite (free tier) | 16/17 (94%) | 100% | 100% |
+| Model | Embeddings | Verdict accuracy | Gap precision | Gap recall |
+|---|---|---|---|---|
+| Gemini 3.5 Flash-Lite (default, free tier) | local `bge-small-en-v1.5` (default) | 17/17 (100%) | 100% | 100% |
+| Gemini 3.5 Flash-Lite | Gemini `gemini-embedding-001` | 16/17 (94%) | 100% | 100% |
 
-That is a small set, so treat it as a smoke test rather than a benchmark; the miss was a requirement whose logic lives in a dependency outside the analyzed folder. Run it with your own provider: `npm run eval -- --model <id>`.
+That is a small set, so treat it as a smoke test rather than a benchmark. Results also vary a little between runs of the same model. Run it with your own provider: `npm run eval -- --model <id>`.
 
 ## CLI reference
 
@@ -180,6 +182,8 @@ Options for `run` and `check`:
 | `-c, --config <file>` | Config file (default `specsync.config.json` if present) |
 | `-p, --provider <name>` | `auto`, `gemini`, `anthropic`, `openai`, `ollama`, `openai-compatible` |
 | `-m, --model <id>` | Model for the provider |
+| `-e, --embeddings <provider>` | `auto` (default), `local`, `gemini`, `openai`, `openai-compatible`; see [Embeddings](#embeddings) |
+| `--embeddings-model <id>` | Embedding model for that provider |
 | `--concurrency <n>` | Parallel LLM calls (default 4) |
 | `--top-k <n>` | Code chunks shown per requirement (default 8; more for list-style requirements) |
 | `--extract <mode>` | `headings` (default) or `llm` to split sections into atomic requirements |
@@ -227,8 +231,8 @@ Paths on the command line are relative to where you run it; paths in a config fi
     "requestsPerMinute": 15          // pace calls under a quota, e.g. Gemini free tier
   },
   "embeddings": {
-    "provider": "local",             // local | gemini | openai | openai-compatible
-    "model": "Xenova/all-MiniLM-L6-v2"
+    "provider": "auto",              // auto | local | gemini | openai | openai-compatible
+    "model": "Xenova/bge-small-en-v1.5"
   },
   "retrieval": { "topK": 8, "maxCandidateTokens": 8000 },
   "thresholds": { "minScore": 70, "failOn": ["error", "regression"] },
@@ -245,17 +249,35 @@ Environment variables: `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, 
 
 ## Providers and privacy
 
-| Provider | Key | Default model |
-|---|---|---|
-| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-opus-5-5` |
-| OpenAI | `OPENAI_API_KEY` | `gpt-5-mini` |
-| Ollama | none (local) | `llama3.1` |
-| OpenAI-compatible | `SPECSYNC_API_KEY` | set `provider.model` |
+| Provider | Key | Default model | Price per 1M tokens (in / out) |
+|---|---|---|---|
+| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` | $0.30 / $2.50, free tier available |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-5-5` | $0.10 / $0.50 |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5.4-mini` | $0.75 / $4.50 |
+| Ollama | none (local) | `qwen3:8b` | free, runs on an 8 GB machine |
+| OpenAI-compatible | `SPECSYNC_API_KEY` | set `provider.model` | |
 
 `auto` uses the first of these that is configured. Requests use each provider's structured-output mode, so replies are schema-checked JSON.
 
-**What leaves your machine:** each requirement's text and the code chunks retrieved for it are sent to the LLM provider you choose. Nothing else, and nothing to SpecSync itself. Embeddings run locally by default (a ~25 MB model downloaded once). For code that must not leave your network, use Ollama or a self-hosted OpenAI-compatible server with local embeddings.
+Defaults are the cheap tier of each provider: a run makes one call per requirement (roughly 2,000 input tokens each) and caches it, so even a 100-requirement spec costs cents. Want more judgement on hard specs? Pick a bigger model with `--model`, for example `gemini-3.5-flash`, `claude-sonnet-5-5` or `gpt-5.4`, and compare with `npm run eval`.
+
+### Embeddings
+
+Embeddings help match a requirement to code that uses different words than the spec. You choose where they run:
+
+| `--embeddings` | What happens | Setup |
+|---|---|---|
+| `auto` (default) | Uses the local model; if it can't be downloaded (offline, firewall), switches to Gemini or OpenAI embeddings when you have that key | none |
+| `local` | [`bge-small-en-v1.5`](https://huggingface.co/Xenova/bge-small-en-v1.5), downloaded once (~35 MB) from Hugging Face and run on your CPU. Code never leaves your machine for this step | none; needs `huggingface.co` reachable the first time |
+| `gemini` | `gemini-embedding-001` via the Gemini API | `GEMINI_API_KEY` |
+| `openai` | `text-embedding-3-small` | `OPENAI_API_KEY` |
+| `openai-compatible` | Any `/embeddings` endpoint | `embeddings.baseUrl` and `embeddings.model` |
+
+You don't need to install anything for `local`: SpecSync downloads the model itself on first use and caches it (set `SPECSYNC_MODEL_CACHE` to choose where). API embeddings on free tiers are rate limited (Gemini allows 100 texts a minute), so a first run on a large repo is slower there; the cache makes every later run fast.
+
+`npm run eval:retrieval` measures how often the right file is among the top results. On the labelled requirements in [`eval/retrieval.json`](eval/retrieval.json) (31 across three codebases), `bge-small-en-v1.5` found a correct file in the top 2 every time with an MRR of 0.98, ahead of `all-MiniLM-L6-v2` (0.95) and the larger `bge-base-en-v1.5` (0.91). Keyword search alone also scored 0.98 there, because those specs mostly reuse the code's own names; embeddings earn their keep when the spec is written in product language.
+
+**What leaves your machine:** each requirement's text and the code chunks retrieved for it are sent to the LLM provider you choose, plus all code chunks to the embedding API if you pick `gemini`, `openai` or `openai-compatible` embeddings. Nothing goes to SpecSync itself. For code that must not leave your network, use Ollama or a self-hosted OpenAI-compatible server with `--embeddings local`.
 
 ## How it compares
 
@@ -283,10 +305,11 @@ npm test            # vitest, offline: scripted provider and hashed embeddings
 npm run lint
 npm run typecheck
 npm run build
-npm run eval        # real provider, labelled cases
+npm run eval        # real provider, labelled verdicts
+npm run eval:retrieval -- --embeddings local   # retrieval only, no LLM calls
 ```
 
-`test/fixtures/todo-api` is a small TypeScript, Python and Go app with a spec and known answers; the golden test runs the whole pipeline on it. `scripts/render-assets.mjs` regenerates the README images from `.github/assets/src`, the terminal image from a real report. Design decisions are logged in [`DECISIONS.md`](DECISIONS.md).
+`test/fixtures/todo-api` is a small TypeScript, Python and Go app with a spec and known answers; the golden test runs the whole pipeline on it. `scripts/render-assets.mjs` regenerates the README images from `.github/assets/src`, the terminal image from a real report.
 
 ## License
 

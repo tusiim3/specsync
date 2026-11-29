@@ -60,7 +60,8 @@
     "format": "prettier --write src test",
     "schema": "tsx scripts/build-schema.ts",
     "eval": "tsx eval/run.ts",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "eval:retrieval": "tsx eval/retrieval.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.13.0",

@@ -122,6 +122,8 @@ export async function runPipeline(opts: PipelineOptions): Promise<DriftReport | 
   if (chunks.length === 0) log('  Warning: no source code found; every requirement will be reported missing.');
 
   const embedder = new CachedEmbedder(opts.embedder ?? createEmbedder(config, (m) => log(`  ${m}`)), cache);
+  // Settle which model is used before any cache lookups, so vectors never mix models.
+  await embedder.prepare();
   log('Embedding...');
   const searchTexts = chunks.map(chunkSearchText);
   const chunkVectors = await embedder.embed(searchTexts);

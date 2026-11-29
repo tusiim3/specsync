@@ -1,0 +1,57 @@
+{
+  "description": "Which files implement each requirement, for measuring retrieval (is a correct file among the chunks shown to the model?).",
+  "cases": [
+    {
+      "name": "todo-api",
+      "spec": "test/fixtures/todo-api/docs/spec.md",
+      "repo": "test/fixtures/todo-api",
+      "evidence": {
+        "REQ-1": ["src/server.ts"],
+        "REQ-2": ["src/server.ts", "src/store.ts"],
+        "REQ-3": ["src/server.ts"],
+        "REQ-4": ["src/auth.ts"],
+        "REQ-5": ["worker/reminders.py"],
+        "REQ-6": ["export/exporter.go"]
+      }
+    },
+    {
+      "name": "express-lib",
+      "spec": "demo/spec.md",
+      "repo": "demo/target-repo/lib",
+      "evidence": {
+        "basic-request-routing": ["application.js"],
+        "middleware-pipeline": ["application.js"],
+        "request-body-parsing": ["express.js"],
+        "response-methods": ["response.js"],
+        "trust-proxy-configuration": ["application.js", "request.js", "utils.js"],
+        "strict-mode-routing": ["application.js"]
+      }
+    },
+    {
+      "name": "specsync",
+      "spec": "docs/spec.md",
+      "repo": "src",
+      "evidence": {
+        "SS-1": ["ingest/normalize.ts", "ingest/pdf.ts"],
+        "SS-2": ["ingest/section-split.ts"],
+        "SS-3": ["ingest/llm-extract.ts"],
+        "SS-4": ["ingest/files.ts"],
+        "SS-5": ["ingest/code-chunker.ts"],
+        "SS-6": ["ingest/code-chunker.ts"],
+        "SS-7": ["search/retrieval.ts"],
+        "SS-8": ["agents/verdict.ts"],
+        "SS-9": ["agents/verdict.ts"],
+        "SS-10": ["llm/retry.ts", "agents/orchestrator.ts", "llm/provider.ts"],
+        "SS-11": ["cache/cache.ts"],
+        "SS-12": ["agents/orchestrator.ts", "cli.ts"],
+        "SS-13": ["report/generator.ts"],
+        "SS-14": ["report/generator.ts"],
+        "SS-15": ["report/text.ts", "report/markdown.ts", "report/sarif.ts"],
+        "SS-16": ["report/diff.ts", "store/history.ts"],
+        "SS-17": ["cli.ts"],
+        "SS-18": ["action/comment.ts"],
+        "SS-19": ["llm/resolver.ts"]
+      }
+    }
+  ]
+}

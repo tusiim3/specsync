@@ -21,6 +21,9 @@ inputs:
   model:
     description: Model id for the provider.
     required: false
+  embeddings:
+    description: "Embeddings: auto (local model, API fallback), local, gemini, openai or openai-compatible."
+    required: false
   min-score:
     description: Fail when spec coverage is below this (0-100).
     required: false
@@ -96,6 +99,7 @@ runs:
         INPUT_CONFIG: ${{ inputs.config }}
         INPUT_PROVIDER: ${{ inputs.provider }}
         INPUT_MODEL: ${{ inputs.model }}
+        INPUT_EMBEDDINGS: ${{ inputs.embeddings }}
         INPUT_MIN_SCORE: ${{ inputs.min-score }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_COMPARE_BASE: ${{ inputs.compare-base }}

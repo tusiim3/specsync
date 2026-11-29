@@ -4,7 +4,7 @@ import { existsSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { glob } from 'glob';
 import { loadDotenv } from './env.js';
-import { ConfigError, loadConfig, PROVIDER_NAMES, type Config, type ConfigInput } from './config.js';
+import { ConfigError, EMBEDDING_PROVIDERS, loadConfig, PROVIDER_NAMES, type Config, type ConfigInput } from './config.js';
 import { resolveProvider } from './llm/resolver.js';
 import { ConfigurationError, ProviderError, type LLMProvider } from './llm/provider.js';
 import { BudgetError, FatalProviderError } from './agents/orchestrator.js';
@@ -28,6 +28,8 @@ interface RunFlags {
   config?: string;
   provider?: (typeof PROVIDER_NAMES)[number];
   model?: string;
+  embeddings?: (typeof EMBEDDING_PROVIDERS)[number];
+  embeddingsModel?: string;
   concurrency?: number;
   topK?: number;
   extract?: 'headings' | 'llm';
@@ -62,6 +64,12 @@ function addRunOptions(cmd: Command): Command {
     .option('-c, --config <file>', 'config file (default: specsync.config.json if present)')
     .addOption(new Option('-p, --provider <name>', 'LLM provider').choices([...PROVIDER_NAMES]))
     .option('-m, --model <id>', 'model id for the provider')
+    .addOption(
+      new Option('-e, --embeddings <provider>', 'embeddings: auto (local, API fallback), local, gemini, openai').choices([
+        ...EMBEDDING_PROVIDERS,
+      ]),
+    )
+    .option('--embeddings-model <id>', 'embedding model id')
     .option('--concurrency <n>', 'parallel LLM calls', int('--concurrency'))
     .option('--top-k <n>', 'code chunks shown to the model per requirement', int('--top-k'))
     .addOption(new Option('--extract <mode>', 'requirement extraction').choices(['headings', 'llm']))
@@ -97,6 +105,10 @@ function overridesFrom(flags: RunFlags): Partial<ConfigInput> {
   if (flags.concurrency) provider['concurrency'] = flags.concurrency;
   if (Object.keys(provider).length) o['provider'] = provider;
   if (flags.topK) o['retrieval'] = { topK: flags.topK };
+  const embeddings: Record<string, unknown> = {};
+  if (flags.embeddings) embeddings['provider'] = flags.embeddings;
+  if (flags.embeddingsModel) embeddings['model'] = flags.embeddingsModel;
+  if (Object.keys(embeddings).length) o['embeddings'] = embeddings;
   const thresholds: Record<string, unknown> = {};
   if (flags.minScore !== undefined) thresholds['minScore'] = flags.minScore;
   if (flags.failOn) thresholds['failOn'] = flags.failOn;
